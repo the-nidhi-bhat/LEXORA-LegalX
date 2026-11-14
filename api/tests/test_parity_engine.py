@@ -221,17 +221,34 @@ def test_advisory_witness_difference():
     assert result.recommendation == 'review'
 
 
-def test_advisory_governing_law_difference():
-    """Governing law difference produces advisory."""
+def test_blocking_governing_law_conflict():
+    """A declared governing-law conflict between the two sides is blocking.
+
+    Design A.14: governing law is blocking when it affects execution
+    obligations; a contradictory jurisdiction cannot be shown not to, so it is
+    treated as blocking (never silently advisory).
+    """
     approved = _make_approved(governing_law=GoverningLaw.INDIA)
     eps = _make_eps(governing_law=GoverningLaw.UNITED_KINGDOM)
+    engine = ParityEngine(approved, eps)
+    result = engine.compare()
+    assert result.is_blocked
+    gl_results = [fr for fr in result.field_results
+                  if fr.field == 'governing_law' and fr.status == 'blocking']
+    assert len(gl_results) == 1
+
+
+def test_advisory_governing_law_missing_declaration():
+    """A governing law declared on one side only is advisory (gap, not conflict)."""
+    approved = _make_approved(governing_law=GoverningLaw.INDIA)
+    eps = _make_eps(governing_law=None)
     engine = ParityEngine(approved, eps)
     result = engine.compare()
     assert not result.is_blocked
     assert result.has_advisory_diffs
     gl_results = [fr for fr in result.field_results
                   if fr.field == 'governing_law' and fr.status == 'advisory']
-    assert len(gl_results) > 0
+    assert len(gl_results) == 1
 
 
 def test_advisory_acceptance_criteria_difference():
@@ -259,7 +276,7 @@ def test_advisory_blocked_takes_precedence():
     approved = _make_approved()
     eps = _make_eps(
         currency='USD',  # blocking
-        governing_law=GoverningLaw.UNITED_KINGDOM,  # advisory
+        governing_law=GoverningLaw.UNITED_KINGDOM,  # also blocking (declared conflict)
     )
     engine = ParityEngine(approved, eps)
     result = engine.compare()

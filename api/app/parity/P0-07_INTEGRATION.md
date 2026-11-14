@@ -93,21 +93,42 @@ The engine does **not** verify approval state — that is the caller's responsib
 - version_id mismatch
 - currency mismatch
 - total_amount_minor mismatch (even 1 paise)
-- milestone count mismatch
 - milestone amount mismatch
 - milestone due_date mismatch
 - missing required milestone
-- unexpected milestone
+- unexpected milestone (milestone count differences surface here, per sequence)
 - review_period_days mismatch
-- review_period_basis mismatch
+- review_period_basis mismatch **while the review-period length matches** — the basis
+  then changes the computed deadline by itself
 - dispute_behavior mismatch
+- governing_law mismatch **when both sides declare a law and the values conflict**
 - missing CLIENT party
 - missing PROVIDER party
 
 **Advisory** (flags for review):
 - witness party difference (present in one, absent in other)
-- governing_law difference
+- party count difference for client/provider
+- party **name** difference — reported only; it is not identity verification
+- party **email** difference
+- milestone **name** difference
 - acceptance_criteria difference
+- review_period_basis difference when review_period_days also differs (the deadline
+  is already blocked, so the basis adds no further deadline effect)
+- governing_law declared on one side only (a gap, not a contradiction)
+
+> **Design note.** `engine_design.md` A.12/A.14 vs B.4/B.5 leave the classification of
+> `review_period_basis` and `governing_law` conditional on an "affects the deadline /
+> execution obligations" signal that the current models do not carry. The rules above
+> implement those conditions using only signals that exist. The overall outcome is never
+> more permissive than before: a conflicting governing law now blocks, and the basis is
+> only ever advisory when `review_period_days` already blocks. A design decision is still
+> needed for a first-class "affects deadline" flag; see the P0-08 handoff.
+
+> **Party identity is not enforced here.** The engine reports name/email differences so
+> a swapped counterparty is visible, but it does not bind execution parties to approved
+> parties. That requires trusted identity context (P0-08) and **remains a deployment
+> blocker** — design section 7.
+
 
 ## Hash/Version Binding
 
