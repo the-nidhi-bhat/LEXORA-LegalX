@@ -15,7 +15,7 @@ from datetime import date
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, model_validator, validator
+from pydantic import BaseModel, Field, field_validator, model_validator, validator
 
 
 # ---------------------------------------------------------------------------
@@ -63,6 +63,30 @@ class PartyRole(str, Enum):
 
 
 # ---------------------------------------------------------------------------
+# Strict integer helper
+# ---------------------------------------------------------------------------
+
+
+def require_plain_int(value, field_name: str) -> int:
+    """Reject any value Pydantic's lax mode would silently coerce to ``int``.
+
+    Pydantic v2 converts ``True`` → 1, ``100.0`` → 100 and ``"5000000"`` →
+    5000000 without warning. For monetary and sequence fields that silent
+    coercion is a correctness and safety defect: a boolean or a float can turn
+    into a valid execution value. These fields accept a real ``int`` only.
+    """
+    if isinstance(value, bool):
+        raise ValueError(f"{field_name} must be an integer, not a boolean")
+    if isinstance(value, float):
+        raise ValueError(f"{field_name} must be an integer, not a float")
+    if not isinstance(value, int):
+        raise ValueError(
+            f"{field_name} must be an integer, got {type(value).__name__}"
+        )
+    return value
+
+
+# ---------------------------------------------------------------------------
 # Core schema
 # ---------------------------------------------------------------------------
 
@@ -97,6 +121,12 @@ class Milestone(BaseModel):
     acceptance_criteria: str = Field(
         ..., min_length=1, description="Non-empty criteria for acceptance"
     )
+
+    @field_validator("seq", "amount_minor", mode="before")
+    @classmethod
+    def _strict_int_fields(cls, value, info):
+        """No silent str/float/bool coercion into sequence or money fields."""
+        return require_plain_int(value, info.field_name)
 
 
 class ContractIR(BaseModel):
@@ -147,6 +177,12 @@ class ContractIR(BaseModel):
         default_factory=list,
         description="Each entry: {field, source_span:{start,end}} byte offsets into stored text",
     )
+
+    @field_validator("total_amount_minor", "review_period_days", mode="before")
+    @classmethod
+    def _strict_int_fields(cls, value, info):
+        """No silent str/float/bool coercion into money or period fields."""
+        return require_plain_int(value, info.field_name)
 
     @model_validator(mode="after")
     def _validate_milestone_sum_matches_total(self) -> "ContractIR":
@@ -256,6 +292,7 @@ __all__ = [
     "Party",
     "Milestone",
     "ContractIR",
+    "require_plain_int",
     "ir_to_hash",
     "default_agreement_id",
     "default_version_id",

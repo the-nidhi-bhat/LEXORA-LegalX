@@ -475,10 +475,34 @@ def test_party_email_invalid():
 # --- Milestone amount from string ---
 
 
-def test_milestone_amount_from_string():
-    """Milestone amount can be provided as a string of digits."""
-    m = Milestone(seq=1, name="X", amount_minor="5000000", due_date="2026-12-01", acceptance_criteria="OK")
-    assert m.amount_minor == 5000000
+def test_milestone_amount_from_string_rejected():
+    """Milestone amount must be a real int — numeric strings are not coerced.
+
+    Pydantic's lax mode would silently turn "5000000" into 5000000. For a money
+    field that is a correctness and safety defect (the same lax path accepts
+    True → 1 and 100.0 → 100), so the schema rejects anything that is not an
+    ``int`` outright.
+    """
+    with pytest.raises(ValueError, match="must be an integer, got str"):
+        Milestone(seq=1, name="X", amount_minor="5000000", due_date="2026-12-01", acceptance_criteria="OK")
+
+
+def test_milestone_amount_boolean_rejected():
+    """A boolean must never become a valid milestone amount (True → 1)."""
+    with pytest.raises(ValueError, match="must be an integer, not a boolean"):
+        Milestone(seq=1, name="X", amount_minor=True, due_date="2026-12-01", acceptance_criteria="OK")
+
+
+def test_milestone_amount_float_rejected():
+    """A float must never be silently truncated into a milestone amount."""
+    with pytest.raises(ValueError, match="must be an integer, not a float"):
+        Milestone(seq=1, name="X", amount_minor=100.0, due_date="2026-12-01", acceptance_criteria="OK")
+
+
+def test_milestone_seq_boolean_rejected():
+    """A boolean sequence number must be rejected."""
+    with pytest.raises(ValueError, match="must be an integer, not a boolean"):
+        Milestone(seq=True, name="X", amount_minor=100, due_date="2026-12-01", acceptance_criteria="OK")
 
 
 # --- Determinism ---
