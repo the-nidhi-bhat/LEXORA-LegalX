@@ -4,3 +4,10 @@ dist
 .env
 .env.*
 !.env.example
+
+# Python (api/)
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.egg-info/
