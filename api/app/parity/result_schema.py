@@ -1,5 +1,6 @@
 """Structured parity result models."""
 
+from datetime import datetime
 from typing import Any, List, Optional
 from typing import Literal
 
@@ -65,4 +66,7 @@ class ParityResult(BaseModel):
     recommendation: Literal["proceed", "blocked", "review"]
 
     # Timestamp supplied by the caller (not secretly generated inside a supposedly pure comparison function)
-    verified_at: Any  # datetime.datetime
+    verified_at: datetime = Field(
+        ...,
+        description="Caller-supplied verification timestamp (engine passes datetime.now() by default)",
+    )
