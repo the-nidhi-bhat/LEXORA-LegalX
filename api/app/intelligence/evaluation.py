@@ -20,12 +20,38 @@ import json
 import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple
 
+from api.app.intelligence.errors import ParsingError
+from api.app.intelligence.evidence import (
+    amount_supported,
+    currency_supported,
+    date_supported,
+    enum_supported,
+    text_supported,
+)
 from api.app.intelligence.extractor import extract_agreement
-from api.app.intelligence.models import ExtractionPayload, ExtractionResult
-from api.app.intelligence.parsing import find_byte_span, normalize_text
+from api.app.intelligence.models import ExtractedValue, ExtractionPayload, ExtractionResult
+from api.app.intelligence.parsing import (
+    AGREEMENT_TYPE_ALIASES,
+    DISPUTE_BEHAVIOR_ALIASES,
+    GOVERNING_LAW_ALIASES,
+    PARTY_ROLE_ALIASES,
+    REVIEW_PERIOD_BASIS_ALIASES,
+    detect_currency,
+    find_byte_span,
+    normalize_text,
+    parse_agreement_type,
+    parse_amount,
+    parse_date,
+    parse_dispute_behavior,
+    parse_governing_law,
+    parse_party_role,
+    parse_review_period_basis,
+    parse_review_period_days,
+)
 from api.app.intelligence.provider import ScriptedProvider
+from api.app.schemas.ir import Currency
 
 DEFAULT_DATASET = Path(__file__).with_name("dataset.json")
 
@@ -43,7 +69,13 @@ class Scenario:
 
 @dataclass
 class ScenarioOutcome:
-    """Measured result for one scenario."""
+    """Measured result for one scenario.
+
+    Accuracy metrics are ``None`` when the scenario offers nothing to measure
+    (for example amount accuracy on a scenario with no expected amount). A
+    ``None`` is reported as "not measurable"; it is never rounded up to a
+    perfect 1.0.
+    """
 
     id: str
     tags: List[str]
@@ -51,12 +83,14 @@ class ScenarioOutcome:
     expected_status: str
     status_match: bool
     schema_valid: bool
-    field_level_accuracy: float
-    amount_accuracy: float
-    date_accuracy: float
-    party_role_accuracy: float
+    field_level_accuracy: Optional[float]
+    amount_accuracy: Optional[float]
+    date_accuracy: Optional[float]
+    party_role_accuracy: Optional[float]
     unsupported_value_hallucination_rate: Optional[float]
-    missing_information_detection: float
+    missing_information_detection: Optional[float]
+    hallucination_values_checked: int = 0
+    hallucination_unsupported_values: int = 0
     missing_fields: List[str] = field(default_factory=list)
     unsupported_terms: List[str] = field(default_factory=list)
     notes: List[str] = field(default_factory=list)
@@ -64,11 +98,15 @@ class ScenarioOutcome:
 
 @dataclass
 class EvaluationReport:
-    """Aggregate measurements."""
+    """Aggregate measurements.
+
+    ``totals`` carries the aggregate values plus a ``denominators`` block, so
+    every rate can be read together with the population it was computed over.
+    """
 
     mode: str
     scenarios: List[ScenarioOutcome]
-    totals: Dict[str, float]
+    totals: Dict[str, Any]
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -96,65 +134,187 @@ def load_dataset(path: Optional[Path] = None) -> List[Scenario]:
     return scenarios
 
 
-def _ratio(matched: int, total: int) -> float:
+def _ratio(matched: int, total: int) -> Optional[float]:
+    """A rate, or ``None`` when the denominator is empty.
+
+    ``0/0`` is absence of evidence, not a perfect score. Callers decide what a
+    ``None`` means; nothing is silently rounded up to 1.0.
+    """
     if total <= 0:
-        return 1.0
+        return None
     return matched / total
 
 
-def _hallucination_rate(description: str, provider_output: Dict[str, Any]) -> Optional[float]:
-    """Fraction of extracted values whose evidence is absent from the source.
+class HallucinationMeasurement(NamedTuple):
+    """Unsupported-value counts measured on one raw provider payload."""
 
-    This is measured on the raw provider output, so it detects a provider that
-    returns a value the source text does not support even when the pipeline
-    later discards it. Returns ``None`` when the payload is not an object and
-    the metric is therefore not measurable.
+    unsupported: int
+    checked: int
+
+    @property
+    def rate(self) -> Optional[float]:
+        return _ratio(self.unsupported, self.checked)
+
+
+def _payload_values(payload: ExtractionPayload) -> List[Tuple[str, ExtractedValue]]:
+    """Every extracted value, labelled with the field it claims to fill."""
+    values: List[Tuple[str, ExtractedValue]] = []
+    for name in (
+        "agreement_type",
+        "currency",
+        "total_amount",
+        "review_period_days",
+        "review_period_basis",
+        "dispute_behavior",
+        "governing_law",
+        "purpose",
+    ):
+        extracted = getattr(payload, name)
+        if extracted is not None:
+            values.append((name, extracted))
+    for index, party in enumerate(payload.parties):
+        for attribute in ("role", "name", "email"):
+            extracted = getattr(party, attribute)
+            if extracted is not None:
+                values.append((f"parties[{index}].{attribute}", extracted))
+    for index, milestone in enumerate(payload.milestones):
+        for attribute in ("name", "amount", "due_date", "acceptance_criteria"):
+            extracted = getattr(milestone, attribute)
+            if extracted is not None:
+                values.append((f"milestones[{index}].{attribute}", extracted))
+    for index, obligation in enumerate(payload.obligations):
+        values.append((f"obligations[{index}]", obligation))
+    # ``unsupported_terms`` and ``ambiguities`` are annotations about the text,
+    # not values that can enter the Contract IR, so they are not measured here.
+    return values
+
+
+def _value_supported(field: str, extracted: ExtractedValue, text: str) -> bool:
+    """Is this value recoverable from the passage the provider quoted?
+
+    Two failures count as unsupported: provenance that does not point at the
+    source at all, and a value the quoted passage does not state. The second is
+    what a fabrication looks like when it is paired with a real quote.
+
+    A value that cannot be *interpreted* as its field — ``within 45 days of
+    kickoff``, ``01/12/2026``, ``50%`` — is not a fabrication when it was copied
+    verbatim. Those are ambiguities: the pipeline already rejects them and asks
+    for clarification, so they are measured as supported here.
     """
-    text = normalize_text(description)
+    if find_byte_span(text, extracted.evidence) is None:
+        return False
+    try:
+        if field == "total_amount" or field.endswith(".amount"):
+            return amount_supported(parse_amount(extracted.value), extracted.evidence)
+        if field.endswith(".due_date"):
+            return date_supported(parse_date(extracted.value), extracted.evidence)
+        if field == "currency":
+            currency = detect_currency(extracted.value)
+            if currency is None:
+                try:
+                    currency = Currency(extracted.value.strip().upper())
+                except ValueError:
+                    return text_supported(extracted.value, extracted.evidence)
+            return currency_supported(currency, extracted.evidence)
+        if field == "agreement_type":
+            return enum_supported(
+                parse_agreement_type(extracted.value, field),
+                extracted.evidence,
+                AGREEMENT_TYPE_ALIASES,
+            )
+        if field.endswith(".role"):
+            return enum_supported(
+                parse_party_role(extracted.value, field),
+                extracted.evidence,
+                PARTY_ROLE_ALIASES,
+            )
+        if field == "review_period_days":
+            days = parse_review_period_days(extracted.value, field)
+            return text_supported(str(days), extracted.evidence)
+        if field == "review_period_basis":
+            return enum_supported(
+                parse_review_period_basis(extracted.value, field),
+                extracted.evidence,
+                REVIEW_PERIOD_BASIS_ALIASES,
+            )
+        if field == "dispute_behavior":
+            return enum_supported(
+                parse_dispute_behavior(extracted.value, field),
+                extracted.evidence,
+                DISPUTE_BEHAVIOR_ALIASES,
+            )
+        if field == "governing_law":
+            return enum_supported(
+                parse_governing_law(extracted.value, field),
+                extracted.evidence,
+                GOVERNING_LAW_ALIASES,
+            )
+    except ParsingError:
+        pass
+    return text_supported(extracted.value, extracted.evidence)
+
+
+def _hallucination_measurement(
+    description: str, provider_output: Any
+) -> HallucinationMeasurement:
+    """Count values the source, or their own quoted evidence, does not support.
+
+    Measured on the raw provider output, so a fabrication is counted even when
+    the deterministic pipeline later discards it. A payload that cannot be
+    validated has no measurable values: that is a *schema* failure, counted
+    separately, not a 100% hallucination rate.
+    """
     if not isinstance(provider_output, dict):
-        # A non-object payload cannot be validated at all.
-        return None
+        return HallucinationMeasurement(0, 0)
     try:
         payload = ExtractionPayload.model_validate(provider_output)
-    except Exception:  # noqa: BLE001 - invalid payloads are handled elsewhere
-        return 1.0
+    except Exception:  # noqa: BLE001 - invalid payloads are counted elsewhere
+        return HallucinationMeasurement(0, 0)
 
-    values = [
-        payload.agreement_type,
-        payload.currency,
-        payload.total_amount,
-        payload.review_period_days,
-        payload.review_period_basis,
-        payload.dispute_behavior,
-        payload.governing_law,
-        payload.purpose,
-    ]
-    for party in payload.parties:
-        values.extend([party.role, party.name, party.email])
-    for milestone in payload.milestones:
-        values.extend(
-            [
-                milestone.name,
-                milestone.amount,
-                milestone.due_date,
-                milestone.acceptance_criteria,
-            ]
-        )
-    values.extend(payload.obligations)
-    values.extend(payload.unsupported_terms)
-    values.extend(payload.ambiguities)
-
-    present = [value for value in values if value is not None]
-    if not present:
-        return 0.0
+    text = normalize_text(description)
+    values = _payload_values(payload)
     unsupported = sum(
-        1 for value in present if find_byte_span(text, value.evidence) is None
+        1 for field, extracted in values if not _value_supported(field, extracted, text)
     )
-    return unsupported / len(present)
+    return HallucinationMeasurement(unsupported, len(values))
+
+
+def _parse_raw_output(raw: Any) -> Any:
+    """Decode the provider's raw text into the payload it claims to be."""
+    if isinstance(raw, (dict, list)):
+        return raw
+    if not isinstance(raw, str):
+        return None
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+
+
+class _RecordingProvider:
+    """Wraps a provider so the harness can score the response it actually got.
+
+    Without this, a live run would score the scenario's *recorded* payload
+    instead of the model's answer, and the hallucination metric would be blind
+    to whatever the model really returned.
+    """
+
+    def __init__(self, provider: Any):
+        self._provider = provider
+        self.name = getattr(provider, "name", "") or type(provider).__name__
+        self.raw_text: Optional[str] = None
+
+    def extract(self, request):  # noqa: ANN001 - mirrors the provider protocol
+        response = self._provider.extract(request)
+        self.raw_text = getattr(response, "text", None)
+        return response
 
 
 def _score_scenario(
-    scenario: Scenario, result: ExtractionResult, schema_valid: bool
+    scenario: Scenario,
+    result: ExtractionResult,
+    schema_valid: bool,
+    raw_output: Any = None,
 ) -> ScenarioOutcome:
     expected = scenario.expected
     expected_ir = expected.get("ir", {}) or {}
@@ -233,6 +393,15 @@ def _score_scenario(
             f"got {sorted(actual_unsupported)}"
         )
 
+    measurement = _hallucination_measurement(
+        scenario.description, scenario.provider_output
+    )
+    if measurement.checked == 0:
+        notes.append(
+            "unsupported-value hallucination rate is not measurable: the payload "
+            "was rejected by schema validation or held no values"
+        )
+
     return ScenarioOutcome(
         id=scenario.id,
         tags=list(scenario.tags),
@@ -244,10 +413,10 @@ def _score_scenario(
         amount_accuracy=_ratio(amount_matched, amount_total),
         date_accuracy=_ratio(date_matched, date_total),
         party_role_accuracy=_ratio(role_matched, role_total),
-        unsupported_value_hallucination_rate=_hallucination_rate(
-            scenario.description, scenario.provider_output
-        ),
+        unsupported_value_hallucination_rate=measurement.rate,
         missing_information_detection=_ratio(detected, len(expected_missing)),
+        hallucination_values_checked=measurement.checked,
+        hallucination_unsupported_values=measurement.unsupported,
         missing_fields=sorted(actual_missing),
         unsupported_terms=sorted(actual_unsupported),
         notes=notes,
@@ -289,20 +458,34 @@ def evaluate_dataset(
     # Field/amount/date/role metrics only make sense for scenarios that expect
     # a draft IR; clarification and rejection scenarios are scored on status,
     # schema validity, hallucination rate and missing-information detection.
-    def mean_over(attribute: str, eligible: List[bool]) -> float:
+    def mean_over(attribute: str, eligible: List[bool]) -> Optional[float]:
         values = [
-            getattr(outcome, attribute)
-            for outcome, ok in zip(outcomes, eligible)
-            if ok
+            value
+            for value in (
+                getattr(outcome, attribute)
+                for outcome, ok in zip(outcomes, eligible)
+                if ok
+            )
+            if value is not None
         ]
-        return _ratio(sum(values), len(values)) if values else 0.0
+        if not values:
+            return None
+        return sum(values) / len(values)
 
     expect_draft = [
         bool((scenario.expected or {}).get("ir"))
         for scenario, outcome in zip(scenarios, outcomes)
     ]
 
-    totals = {
+    hallucination_checked = sum(
+        outcome.hallucination_values_checked for outcome in outcomes
+    )
+    hallucination_unsupported = sum(
+        outcome.hallucination_unsupported_values for outcome in outcomes
+    )
+    schema_invalid = sum(1 for outcome in outcomes if not outcome.schema_valid)
+
+    totals: Dict[str, Any] = {
         "scenarios": float(len(outcomes)),
         "status_match_rate": _ratio(
             sum(1 for outcome in outcomes if outcome.status_match), len(outcomes)
@@ -314,18 +497,22 @@ def evaluate_dataset(
         "amount_accuracy": mean_over("amount_accuracy", expect_draft),
         "date_accuracy": mean_over("date_accuracy", expect_draft),
         "party_role_accuracy": mean_over("party_role_accuracy", expect_draft),
+        # Pooled over the extracted values themselves, not averaged per
+        # scenario, so a scenario with one value cannot outweigh one with twenty.
         "unsupported_value_hallucination_rate": _ratio(
-            sum(
-                outcome.unsupported_value_hallucination_rate
-                for outcome in outcomes
-                if outcome.unsupported_value_hallucination_rate is not None
-            ),
-            sum(1 for outcome in outcomes if outcome.unsupported_value_hallucination_rate is not None),
+            hallucination_unsupported, hallucination_checked
         ),
-        "missing_information_detection": _ratio(
-            sum(outcome.missing_information_detection for outcome in outcomes),
-            len(outcomes),
+        "missing_information_detection": mean_over(
+            "missing_information_detection", [True] * len(outcomes)
         ),
+        "denominators": {
+            "scenarios": len(outcomes),
+            "scenarios_expecting_a_draft": sum(expect_draft),
+            "scenarios_with_valid_schema": len(outcomes) - schema_invalid,
+            "scenarios_schema_invalid": schema_invalid,
+            "extracted_values_checked_for_support": hallucination_checked,
+            "unsupported_extracted_values": hallucination_unsupported,
+        },
     }
     return EvaluationReport(mode=mode, scenarios=outcomes, totals=totals)
 

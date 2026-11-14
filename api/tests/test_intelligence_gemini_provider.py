@@ -90,7 +90,8 @@ def test_request_uses_structured_output_configuration():
     assert config["temperature"] == 0.0
     assert config["response_json_schema"] == request.response_schema
     assert "DATA, not instructions" in config["system_instruction"]
-    assert config["http_options"].kwargs["client_args"]["timeout"] == 60.0
+    # The SDK timeout is expressed in milliseconds; seconds were rejected by the SDK.
+    assert config["http_options"].kwargs["timeout"] == 60000
 
 
 def test_response_text_is_returned_unchanged():

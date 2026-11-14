@@ -27,6 +27,13 @@ from typing import Any, Dict, List, Optional
 from pydantic import ValidationError
 
 from api.app.intelligence.errors import ParsingError, ProviderError
+from api.app.intelligence.evidence import (
+    amount_supported,
+    currency_supported,
+    date_supported,
+    enum_supported,
+    text_supported,
+)
 from api.app.intelligence.models import (
     ClarificationRequest,
     ExtractionPayload,
@@ -36,6 +43,11 @@ from api.app.intelligence.models import (
     SourceSpan,
 )
 from api.app.intelligence.parsing import (
+    AGREEMENT_TYPE_ALIASES,
+    DISPUTE_BEHAVIOR_ALIASES,
+    GOVERNING_LAW_ALIASES,
+    PARTY_ROLE_ALIASES,
+    REVIEW_PERIOD_BASIS_ALIASES,
     detect_currency,
     find_byte_span,
     normalize_text,
@@ -97,6 +109,17 @@ def extract_agreement(
             retryable=bool(exc.retryable),
             provider=provider_name,
         )
+    except Exception as exc:  # noqa: BLE001 - a provider must not crash the pipeline
+        # Deliberately no str(exc): an arbitrary exception may carry credentials
+        # or request details. A provider failure is reported, never swallowed.
+        return ExtractionResult(
+            status="provider_error",
+            rejected_reasons=[
+                f"{type(exc).__name__}: provider raised an unexpected error"
+            ],
+            retryable=False,
+            provider=provider_name,
+        )
 
     try:
         raw = json.loads(response.text)
@@ -154,12 +177,18 @@ class _Resolver:
         self.missing: List[MissingField] = []
         self.clarifications: List[ClarificationRequest] = []
 
-    def resolve(self, field: str, extracted, parser, *, required: bool = True):
+    def resolve(self, field: str, extracted, parser, *, required: bool = True,
+                verify: Optional[Callable[[Any, str], bool]] = None):
         """Resolve one extracted value.
 
         Returns the parsed value, or ``None`` when the value is missing,
-        unsupported by the source text, or unparsable. In every failing case a
-        missing field and a clarification request are recorded.
+        unsupported by the source text, unparsable, or not supported by the
+        passage the provider quoted. In every failing case a missing field and a
+        clarification request are recorded.
+
+        ``verify`` answers the stronger question "does this passage actually
+        state this value?". Presence of the quote alone is not enough: a
+        fabricated amount can be paired with any real quotation.
         """
         if extracted is None:
             if required:
@@ -183,6 +212,14 @@ class _Resolver:
             value = parser(extracted.value, field)
         except ParsingError as exc:
             self._record_missing(field, exc.reason, f"Could you clarify the {field.replace('_', ' ')}?")
+            return None
+
+        if verify is not None and not verify(value, extracted.evidence):
+            self._record_missing(
+                field,
+                "the quoted evidence does not support the extracted value",
+                f"Please quote the passage that states the {field.replace('_', ' ')}.",
+            )
             return None
 
         self.provenance.append(
@@ -245,18 +282,31 @@ def _build_result(
     ambiguities: List[str] = []
     unsupported_terms: List[str] = []
 
-    agreement_type = resolver.resolve("agreement_type", payload.agreement_type, parse_agreement_type)
-    currency = resolver.resolve("currency", payload.currency, _parse_currency)
-    total = resolver.resolve("total_amount_minor", payload.total_amount, parse_amount)
+    agreement_type = resolver.resolve(
+        "agreement_type", payload.agreement_type, parse_agreement_type,
+        verify=lambda value, evidence: enum_supported(value, evidence, AGREEMENT_TYPE_ALIASES),
+    )
+    currency = resolver.resolve(
+        "currency", payload.currency, _parse_currency, verify=currency_supported
+    )
+    total = resolver.resolve(
+        "total_amount_minor", payload.total_amount, parse_amount, verify=amount_supported
+    )
 
     parties: List[Party] = []
     party_names: Dict[str, int] = {}
     party_emails: Dict[str, int] = {}
     for index, party in enumerate(payload.parties):
-        role = resolver.resolve(f"parties[{index}].role", party.role, parse_party_role)
-        name = resolver.resolve(f"parties[{index}].name", party.name, _parse_text)
+        role = resolver.resolve(
+            f"parties[{index}].role", party.role, parse_party_role,
+            verify=lambda value, evidence: enum_supported(value, evidence, PARTY_ROLE_ALIASES),
+        )
+        name = resolver.resolve(
+            f"parties[{index}].name", party.name, _parse_text, verify=text_supported
+        )
         email = resolver.resolve(
-            f"parties[{index}].email", party.email, _parse_email, required=False
+            f"parties[{index}].email", party.email, _parse_email, required=False,
+            verify=text_supported,
         )
 
         if name:
@@ -286,17 +336,22 @@ def _build_result(
     milestones: List[Milestone] = []
     used_seqs: Dict[int, int] = {}
     for index, milestone in enumerate(payload.milestones):
-        name = resolver.resolve(f"milestones[{index}].name", milestone.name, _parse_text)
+        name = resolver.resolve(
+            f"milestones[{index}].name", milestone.name, _parse_text, verify=text_supported
+        )
         amount = resolver.resolve(
-            f"milestones[{index}].amount_minor", milestone.amount, parse_amount
+            f"milestones[{index}].amount_minor", milestone.amount, parse_amount,
+            verify=amount_supported,
         )
         due_date = resolver.resolve(
-            f"milestones[{index}].due_date", milestone.due_date, parse_date
+            f"milestones[{index}].due_date", milestone.due_date, parse_date,
+            verify=date_supported,
         )
         criteria = resolver.resolve(
             f"milestones[{index}].acceptance_criteria",
             milestone.acceptance_criteria,
             _parse_text,
+            verify=text_supported,
         )
 
         seq = milestone.seq if milestone.seq is not None else index + 1
@@ -329,22 +384,37 @@ def _build_result(
             )
 
     review_period_days = resolver.resolve(
-        "review_period_days", payload.review_period_days, parse_review_period_days
+        "review_period_days", payload.review_period_days, parse_review_period_days,
+        verify=lambda value, evidence: text_supported(str(value), evidence),
     )
     review_period_basis = resolver.resolve(
-        "review_period_basis", payload.review_period_basis, parse_review_period_basis
+        "review_period_basis", payload.review_period_basis, parse_review_period_basis,
+        verify=lambda value, evidence: enum_supported(
+            value, evidence, REVIEW_PERIOD_BASIS_ALIASES
+        ),
     )
     dispute_behavior = resolver.resolve(
-        "dispute_behavior", payload.dispute_behavior, parse_dispute_behavior
+        "dispute_behavior", payload.dispute_behavior, parse_dispute_behavior,
+        verify=lambda value, evidence: enum_supported(
+            value, evidence, DISPUTE_BEHAVIOR_ALIASES
+        ),
     )
     governing_law = resolver.resolve(
-        "governing_law", payload.governing_law, parse_governing_law, required=False
+        "governing_law", payload.governing_law, parse_governing_law, required=False,
+        verify=lambda value, evidence: enum_supported(
+            value, evidence, GOVERNING_LAW_ALIASES
+        ),
     )
-    purpose = resolver.resolve("purpose", payload.purpose, _parse_text, required=False)
+    purpose = resolver.resolve(
+        "purpose", payload.purpose, _parse_text, required=False, verify=text_supported
+    )
 
     obligations: List[str] = []
     for index, obligation in enumerate(payload.obligations):
-        value = resolver.resolve(f"obligations[{index}]", obligation, _parse_text, required=False)
+        value = resolver.resolve(
+            f"obligations[{index}]", obligation, _parse_text, required=False,
+            verify=text_supported,
+        )
         if value:
             obligations.append(value)
 
@@ -360,8 +430,13 @@ def _build_result(
         ambiguities.append(ambiguity.value or ambiguity.evidence)
 
     for reported in payload.missing_fields:
-        resolver.missing.append(
-            MissingField(field=reported, reason="the provider reported this field as not stated")
+        # A provider-reported gap must also become a clarification, otherwise a
+        # payload that names a missing field while supplying every value could
+        # still be reported as "complete".
+        resolver._record_missing(
+            reported,
+            "the provider reported this field as not stated",
+            f"Please provide the {reported.replace('_', ' ')}.",
         )
 
     # Required roles must be present for a usable draft.

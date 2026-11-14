@@ -46,10 +46,18 @@ Rules you must follow:
 
 
 def build_user_prompt(description: str) -> str:
-    """Render the user prompt with the description fenced as untrusted data."""
+    """Render the user prompt with the description fenced as untrusted data.
+
+    The description is sanitised first: if it contains the fence token itself,
+    the token is neutralised, so no description can close the data fence early
+    and have its text read as instructions.
+    """
+    safe_description = (description or "").replace(
+        DESCRIPTION_DELIMITER, "[[escaped-description-delimiter]]"
+    )
     return (
         f"{DESCRIPTION_DELIMITER}\n"
-        f"{description}\n"
+        f"{safe_description}\n"
         f"{DESCRIPTION_DELIMITER}\n\n"
         "Extract the contract data from the description above."
     )

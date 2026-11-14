@@ -126,7 +126,9 @@ class GeminiExtractionProvider:
             response_json_schema=request.response_schema,
             http_options=types_module.HttpOptions(
                 api_version="v1",
-                client_args={"timeout": self.timeout_seconds},
+                # The SDK expresses this timeout in milliseconds; passing seconds
+                # through client_args used to leave the real timeout unset.
+                timeout=int(self.timeout_seconds * 1000),
             ),
         )
 
@@ -151,7 +153,9 @@ class GeminiExtractionProvider:
                     self._sleep(self.backoff_seconds * attempt)
                     last_error = error
                     continue
-                raise error from exc
+                # `from None` suppresses the chained SDK exception: its message can
+                # contain the request URL with the API key in it.
+                raise error from None
             return self._read_response(response)
 
         raise last_error or ProviderServiceError(
@@ -161,7 +165,7 @@ class GeminiExtractionProvider:
     def _read_response(self, response: Any) -> ProviderResponse:
         """Validate the provider response and return its raw text."""
         finish_reason = self._finish_reason(response)
-        if finish_reason and finish_reason.upper() in _SAFETY_FINISH_REASONS:
+        if finish_reason and finish_reason in _SAFETY_FINISH_REASONS:
             raise ProviderSafetyError(
                 f"gemini blocked the request (finish_reason={finish_reason})",
                 provider=self.name,
@@ -190,14 +194,13 @@ class GeminiExtractionProvider:
         candidates = getattr(response, "candidates", None) or []
         if not candidates:
             return None
-        reason = getattr(candidates[0], "finish_reason", None)
-        return str(reason) if reason is not None else None
+        return _reason_token(getattr(candidates[0], "finish_reason", None))
 
     @staticmethod
     def _block_reason(response: Any) -> Optional[str]:
         feedback = getattr(response, "prompt_feedback", None)
         reason = getattr(feedback, "block_reason", None) if feedback else None
-        return str(reason) if reason else None
+        return _reason_token(reason)
 
     # -- error mapping ----------------------------------------------------
 
@@ -232,6 +235,20 @@ class GeminiExtractionProvider:
         return message
 
 
+def _reason_token(reason: Any) -> Optional[str]:
+    """Normalize an SDK enum reason to its plain upper-case token.
+
+    ``str(types.FinishReason.SAFETY)`` is ``"FinishReason.SAFETY"`` because the
+    enum replaces the string mixin's ``__str__``. Comparing ``str(reason).upper()``
+    against ``{"SAFETY", ...}`` therefore never matched, and a safety stop was
+    treated as a normal response. ``.value`` carries the plain token.
+    """
+    if reason is None:
+        return None
+    token = str(getattr(reason, "value", reason)).strip().upper()
+    return token or None
+
+
 def _status_code(exc: BaseException) -> Optional[int]:
     for attribute in ("code", "status_code"):
         value = getattr(exc, attribute, None)
@@ -244,9 +261,9 @@ def _status_code(exc: BaseException) -> Optional[int]:
     return None
 
 
-def is_configured() -> bool:
-    """True when a Gemini API key is present in the environment."""
-    return bool(os.environ.get(API_KEY_ENV_VAR))
+def is_configured(api_key: Optional[str] = None) -> bool:
+    """True when an API key is available, explicitly or via the environment."""
+    return bool(api_key or os.environ.get(API_KEY_ENV_VAR))
 
 
 __all__ = [

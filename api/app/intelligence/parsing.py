@@ -43,9 +43,26 @@ _CURRENCY_PATTERNS = (
     (re.compile(r"(?i)£|\b(?:gbp|pounds?)\b"), Currency.GBP),
 )
 
-_MINOR_UNIT_MARKERS = re.compile(r"(?i)\b(?:paise|paise|paisa|cents?|minor units?)\b")
+_MINOR_UNIT_MARKERS = re.compile(r"(?i)\b(?:paise|paisa|cents?|minor units?)\b")
 
-_NUMBER_RE = re.compile(r"-?\d[\d,\s]*(?:\.\d+)?")
+#: Characters a number token may contain. Anything else ends the token, so an
+#: unsupported notation is detected rather than silently truncated.
+_NUMBER_TOKEN_RE = re.compile(r"-?\d[\d,._]*")
+
+#: Grammars an amount may be written in. The Indian lakh/crore grouping
+#: (``1,20,000``) and the thousands grouping (``1,000,000``) are both accepted;
+#: a malformed grouping such as ``1.20.000`` is not.
+_ALLOWED_NUMBER_RE = re.compile(
+    r"^-?(?:\d{1,2}(?:,\d{2})*,\d{3}|\d{1,3}(?:,\d{3})*|\d+)(?:\.\d+)?$"
+)
+
+#: Percentages are not amounts. The symbol is checked separately; these are the
+#: written forms that would otherwise be parsed as a plain number.
+_PERCENT_WORD_RE = re.compile(r"(?i)\bpercent(?:age)?\b|\bper\s+cent\b")
+
+#: Notations that historically truncated to a wrong value: ``1e6`` → 1,
+#: ``1_000`` → 1, ``1.5e3`` → 1.5, ``50k`` → 50.
+_UNSUPPORTED_NOTATION_RE = re.compile(r"(?i)(?:\d\s*e\s*[-+]?\d)|(?:\d_\d)|(?:\d[A-Za-z])")
 
 _MONTHS = {
     "january": 1, "jan": 1,
@@ -157,8 +174,12 @@ class ParsedAmount:
 
 
 def normalize_text(text: str) -> str:
-    """Normalize source text: NFC, strip outer whitespace, normalise newlines."""
-    if text is None:
+    """Normalize source text: NFC, strip outer whitespace, normalise newlines.
+
+    Non-string input is treated as an empty description rather than raising, so
+    a malformed request is rejected by the pipeline instead of crashing it.
+    """
+    if not isinstance(text, str):
         return ""
     normalized = unicodedata.normalize("NFC", text.replace("\r\n", "\n").replace("\r", "\n"))
     return normalized.strip()
@@ -199,10 +220,12 @@ def parse_amount(value: str, field: str = "") -> ParsedAmount:
     """
     if value is None:
         raise ParsingError("amount is missing", field)
+    if not isinstance(value, str):
+        raise ParsingError("amount is not text", field)
     text = value.strip()
     if not text:
         raise ParsingError("amount is empty", field)
-    if "%" in text:
+    if "%" in text or _PERCENT_WORD_RE.search(text):
         raise ParsingError(
             "amount is a percentage; the base amount is not stated", field
         )
@@ -219,11 +242,26 @@ def parse_amount(value: str, field: str = "") -> ParsedAmount:
     is_minor_units = bool(_MINOR_UNIT_MARKERS.search(text))
     text = _MINOR_UNIT_MARKERS.sub(" ", text)
 
-    match = _NUMBER_RE.search(text)
-    if not match:
-        raise ParsingError("amount contains no number", field)
+    if _UNSUPPORTED_NOTATION_RE.search(text):
+        raise ParsingError(
+            f"amount '{value.strip()}' uses an unsupported numeric notation", field
+        )
 
-    numeric = match.group(0).replace(",", "").replace(" ", "")
+    tokens = [token for token in _NUMBER_TOKEN_RE.findall(text) if token not in ("", "-")]
+    if not tokens:
+        raise ParsingError("amount contains no number", field)
+    if len(tokens) > 1:
+        raise ParsingError(
+            "amount contains more than one number; the amount is ambiguous", field
+        )
+
+    numeric_raw = tokens[0]
+    if not _ALLOWED_NUMBER_RE.match(numeric_raw):
+        raise ParsingError(
+            f"amount '{numeric_raw}' is not written in a supported format", field
+        )
+
+    numeric = numeric_raw.replace(",", "")
     try:
         amount = Decimal(numeric)
     except InvalidOperation:  # pragma: no cover - guarded by the regex
