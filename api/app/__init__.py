@@ -1,0 +1,1 @@
+"""LEGALX API application package."""
