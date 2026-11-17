@@ -16,7 +16,9 @@ A user can hold multiple roles, but each role is scoped to a workspace. The demo
 
 ## Frontend enforcement
 
-The shell uses `canAccessRoute` before rendering protected content. A denied route renders a 403-style state and does not mount the underlying page component. Navigation is filtered from the same role policy. Financial widgets are masked for roles without `escrow:view_financials`; this is presentation defense-in-depth, not the security boundary.
+The shell uses `canAccessRoute` before rendering protected content. A denied route renders a 403-style state and does not mount the underlying page component. Navigation is filtered from the same role policy and direct/programmatic route access follows the same centralized checks. Financial widgets are masked for roles without `escrow:view_financials`; this is presentation defense-in-depth, not the security boundary.
+
+P0-02 policy notes (frontend demo): Agreement Owner is granted granular **read-only** route access to Contract IR and Parity for inspection only, without `audit:view`, verification approval, execution bypass, evidence modification/deletion, Team/workspace management, or other unrelated sensitive permissions. Legal Reviewer has Activity access within the authorized workspace scope via existing `workspace:view_activity` (navigation and direct route). These are UI/demo guardrails; production authorization must be enforced independently by server-side handlers and database/RLS policies.
 
 ## API enforcement
 
@@ -65,4 +67,4 @@ The UI seeds these accounts without passwords or production credentials: `owner@
 
 ## Unauthorized test cases
 
-The required negative cases are covered by `scripts/test-rbac.mjs`: freelancer access to AI creation and escrow funding; admin access to parity or financial transactions; auditor access to editing or funding; and cross-workspace resource access at the server policy boundary. A passing test means the request is denied, not merely hidden from the sidebar.
+`npm run test` runs `scripts/test-rbac.mjs` (via Node strip-types) against the **actual `src/rbac.ts` implementation**. Coverage includes core role permissions, P0-02 Owner read-only Contract IR/Parity access without broad/sensitive grants, Owner Team denial, Legal Reviewer Activity access with preserved IR/Parity, Technical Auditor/Freelancer/Org Admin regressions, direct/unknown route denial, navigation-vs-route consistency, and financial masking. A passing test means the request is denied by policy logic, not merely hidden from the sidebar. Frontend checks remain demo-only; server/database enforcement must be implemented and tested separately.
