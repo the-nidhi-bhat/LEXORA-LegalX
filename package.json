@@ -8,7 +8,7 @@
     "dev": "vite --host 0.0.0.0 --port 3000",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node scripts/test-demo.mjs && node scripts/test-rbac.mjs && node scripts/test-resilience.mjs && node scripts/test-workflows.mjs",
+    "test": "node scripts/test-demo.mjs && node --experimental-strip-types scripts/test-rbac.mjs && node scripts/test-resilience.mjs && node scripts/test-workflows.mjs && node --experimental-strip-types scripts/test-solidity-generation.mjs && node --experimental-strip-types scripts/test-traceability.mjs && node --experimental-strip-types scripts/test-whatif.mjs && node --experimental-strip-types scripts/test-drift-version-audit.mjs && node --experimental-strip-types scripts/test-api-client.mjs",
     "rehearse:demo": "node scripts/rehearse-demo.mjs",
     "rehearse:judge": "node scripts/final-demo-checklist.mjs"
   },

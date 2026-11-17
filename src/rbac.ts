@@ -37,14 +37,14 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
 }
 
 export const ROLE_NAV: Record<Role, readonly [string, string, string][]> = {
-  owner: [['Overview', '/app', 'grid'], ['My Agreements', '/app/agreements', 'file'], ['AI Workspace', '/app/ai-workspace', 'spark'], ['Contract IR', '/app/contract-ir', 'database'], ['Verification', '/app/parity', 'scan'], ['Escrow', '/app/smart-contracts', 'wallet'], ['Milestones', '/app/milestones', 'layers'], ['Trust Passport', '/app/agreements/website-project', 'shield'], ['Team', '/app/team', 'users'], ['Notifications', '/app/notifications', 'bell'], ['Settings', '/app/settings', 'settings']],
+  owner: [['Overview', '/app', 'grid'], ['My Agreements', '/app/agreements', 'file'], ['AI Workspace', '/app/ai-workspace', 'spark'], ['Contract IR', '/app/contract-ir', 'database'], ['Verification', '/app/parity', 'scan'], ['Escrow', '/app/smart-contracts', 'wallet'], ['Milestones', '/app/milestones', 'layers'], ['Trust Passport', '/app/agreements/website-project', 'shield'], ['Notifications', '/app/notifications', 'bell'], ['Settings', '/app/settings', 'settings']],
   freelancer: [['My Dashboard', '/app', 'grid'], ['My Agreements', '/app/agreements', 'file'], ['Projects & Milestones', '/app/milestones', 'layers'], ['Deliverables', '/app/activity', 'file'], ['Payments', '/app/transactions', 'wallet'], ['Disputes', '/app/help', 'alert'], ['Notifications', '/app/notifications', 'bell'], ['Profile & Wallet', '/app/profile', 'users']],
-  legal_reviewer: [['Review Dashboard', '/app', 'grid'], ['Assigned Agreements', '/app/agreements', 'file'], ['Document Review', '/app/agreements/website-project', 'edit'], ['AI Extraction Review', '/app/ai-workspace', 'spark'], ['Contract IR Review', '/app/contract-ir', 'database'], ['Parity Reports', '/app/parity', 'scan'], ['Trust Passport', '/app/agreements/website-project', 'shield'], ['Notifications', '/app/notifications', 'bell']],
+  legal_reviewer: [['Review Dashboard', '/app', 'grid'], ['Assigned Agreements', '/app/agreements', 'file'], ['Document Review', '/app/agreements/website-project', 'edit'], ['AI Extraction Review', '/app/ai-workspace', 'spark'], ['Contract IR Review', '/app/contract-ir', 'database'], ['Parity Reports', '/app/parity', 'scan'], ['Activity', '/app/activity', 'activity'], ['Trust Passport', '/app/agreements/website-project', 'shield'], ['Notifications', '/app/notifications', 'bell']],
   org_admin: [['Workspace Overview', '/app', 'grid'], ['Members', '/app/team', 'users'], ['Roles & Permissions', '/app/settings', 'shield'], ['Agreements', '/app/agreements', 'file'], ['Activity Logs', '/app/activity', 'activity'], ['Integrations', '/app/smart-contracts', 'layers'], ['Security', '/app/help', 'lock'], ['Workspace Settings', '/app/settings', 'settings']],
   technical_auditor: [['Audit Overview', '/app', 'grid'], ['Agreements', '/app/agreements', 'file'], ['Contract IR Inspector', '/app/contract-ir', 'database'], ['Parity Reports', '/app/parity', 'scan'], ['Document Integrity', '/app/agreements/website-project', 'shield'], ['Smart Contract Versions', '/app/smart-contracts', 'code'], ['Blockchain Explorer', '/app/transactions', 'external'], ['Audit Logs', '/app/activity', 'activity']],
 }
 
-const ROUTE_PERMISSIONS: Record<string, Permission | undefined> = {
+export const ROUTE_PERMISSIONS: Record<string, Permission | undefined> = {
   '/app/ai-workspace': 'agreement:create',
   '/app/contract-ir': 'audit:view',
   '/app/parity': 'audit:view',
@@ -55,7 +55,7 @@ const ROUTE_PERMISSIONS: Record<string, Permission | undefined> = {
   '/app/activity': 'workspace:view_activity',
 }
 
-const SHARED_ROLE_ROUTES: Record<Role, readonly string[]> = {
+export const SHARED_ROLE_ROUTES: Record<Role, readonly string[]> = {
   owner: ['/app/profile', '/app/agreements/website-project'],
   freelancer: ['/app/agreements/website-project'],
   legal_reviewer: ['/app/agreements/website-project'],
@@ -68,6 +68,9 @@ export function canAccessRoute(role: Role, path: string): boolean {
   if (path === '/demo' || path === '/app') return true
   const roleOwnsRoute = ROLE_NAV[role].some((item) => item[1] === path) || SHARED_ROLE_ROUTES[role].includes(path)
   if (!roleOwnsRoute) return false
+  // P0-02: Agreement Owner has granular read-only access to Contract IR and Parity only.
+  // This does not grant audit:view or any approval, bypass, edit, or evidence-mutation authority.
+  if ((path === '/app/contract-ir' || path === '/app/parity') && role === 'owner') return true
   if (path === '/app/transactions' || path === '/app/smart-contracts') return hasPermission(role, 'escrow:view_financials') || hasPermission(role, 'escrow:fund') || hasPermission(role, 'audit:view') || hasPermission(role, 'workspace:manage')
   if (path === '/app/ai-workspace') return hasPermission(role, 'agreement:create') || hasPermission(role, 'agreement:approve_legal') || hasPermission(role, 'audit:view')
   if (path === '/app/activity') return hasPermission(role, 'workspace:view_activity') || hasPermission(role, 'milestone:submit')
