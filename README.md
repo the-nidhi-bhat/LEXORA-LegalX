@@ -1,4 +1,4 @@
-# LEGALX
+# LEGALX - Work In Progress
 
 ### From human agreements to executable trust.
 
