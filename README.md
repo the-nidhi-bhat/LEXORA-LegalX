@@ -77,7 +77,7 @@ Labels follow the project's status vocabulary: **VERIFIED** = executed and evide
 | Five-role demo switcher | **SIMULATED** | Local UI control; not production identity binding |
 | Managed storage, server-side AI provider, private upload, IR package, Passport export | **DEFERRED** | Roadmap items; no HTTP surface claimed |
 | Wallet lifecycle, on-chain indexing, real escrow | **DEFERRED / OUT OF SCOPE** | Excluded by owner decision and repository audit |
-| Live hosted deployment and managed Postgres | **BLOCKED** | Configuration complete; preview deploy awaits an owner-provisioned database URL |
+| Live hosted deployment and managed Postgres | **VERIFIED (Preview)** | Vercel Preview + Neon Postgres live; Alembic + demo seed applied; hosted E2E passed |
 | MIT or any license grant | **BLOCKED** | Proposal only; see [Contributors and license](#contributors-and-license) |
 | Jury submission PDF | **DOES NOT EXIST** | No file is asserted or fabricated |
 
@@ -91,7 +91,7 @@ The authoritative HTTP surface is **15 real routes**. There is **no** review, ta
 
 **Simulated and labelled.** AI-style extraction is a deterministic fixture with no live provider in the verification path. The tamper/restore demonstration, document preview, and test-network workspace records are labelled simulation. The role switcher is a **local demo-only** control, not production identity binding. Identity binding (for example, a swapped counterparty) is advisory and deferred.
 
-**Deferred, blocked, or out of scope.** Managed deployment and managed Postgres are blocked pending owner provisioning. A jury PDF and an active license do not exist. **On-chain execution, Solidity deployment, wallet integration, MetaMask, real escrow, and on-chain indexing are OUT OF SCOPE** by decision and audit; no transaction, mainnet, or real-funds claim is made. No professional security audit, WCAG conformance, or legal-enforceability guarantee is claimed.
+**Deferred, blocked, or out of scope.** The Vercel Preview deployment with managed Neon Postgres is live and full-stack verified; Production promotion still requires explicit owner approval. A jury PDF and an active license do not exist. **On-chain execution, Solidity deployment, wallet integration, MetaMask, real escrow, and on-chain indexing are OUT OF SCOPE** by decision and audit; no transaction, mainnet, or real-funds claim is made. No professional security audit, WCAG conformance, or legal-enforceability guarantee is claimed.
 
 ---
 
@@ -496,7 +496,7 @@ Contributions are governed by [CONTRIBUTING.md](CONTRIBUTING.md). Authorship is 
 
 **No license is currently granted.** `docs/proposed-LICENSE.md` is an MIT **proposal only**. [LICENSING_REVIEW.md](docs/LICENSING_REVIEW.md) records status **BLOCKED** pending owner and contributor consent.
 
-- Film and noir artwork provenance and licensing are **UNVERIFIED**; no rights are claimed. See [docs/MEDIA_PROVENANCE.md](docs/MEDIA_PROVENANCE.md).
+- Film and noir artwork were confirmed **all original by the owner (2026-11-22)** and are published; see [docs/MEDIA_PROVENANCE.md](docs/MEDIA_PROVENANCE.md).
 - Bundled fonts **DM Sans** and **Instrument Serif** are licensed under **SIL OFL 1.1** (notices preserved) and are **excluded** from any MIT claim.
 - The identity is a typographic wordmark with an inline SVG mark; no separate logo asset is asserted.
 

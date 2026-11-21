@@ -1,9 +1,18 @@
-# Vercel deployment runbook (SCAFFOLDING ONLY — no live deploy)
+# Vercel deployment runbook
 
-Status: **local scaffolding complete; live deploy is BLOCKED.** The owner has
-approved a **preview-only** target and an **owner-provided `DATABASE_URL` only**.
-This workstream creates no accounts, enables no billing, handles no credentials,
-and runs no `vercel deploy`. Nothing here asserts a verified deployment.
+Status (2026-11-22): **Preview full-stack deployment VERIFIED LIVE.** The
+`lexora-legalx` project runs Vercel Services (Vite SPA + FastAPI) on a shared
+domain with an external Neon PostgreSQL database. The one-time Alembic migration
+(`e25c7211a088`) and demo seed were applied by the owner; hosted E2E passed
+(9 groups), cinematic media serves with correct MIME types, and browser visual
+QA passed at desktop/tablet/mobile. Production release is **separate** and
+requires explicit owner approval; it is not performed by this runbook.
+
+Verified Preview URL:
+`https://lexora-legalx-git-release-fi-95cd21-thenidhibhat-6721s-projects.vercel.app`
+
+Deployment Protection is enabled — use `vercel curl <url> --yes` to bypass.
+This runbook creates no accounts, enables no billing, and handles no credentials.
 
 ## Topology
 
@@ -64,24 +73,27 @@ Frontend:
 - `APP_ENV=production` **hard-rejects** any non-PostgreSQL `DATABASE_URL`
   (`api/app/config.py:97-102`). The owner-supplied value must be a PostgreSQL
   URL before a production-targeted build can boot.
-- The migration cannot be executed here: it is **Blocked** until the owner
-  supplies the managed-Postgres `DATABASE_URL`.
+- The one-time migration was applied by the owner in the Neon SQL Editor on
+  2026-11-22 (`e25c7211a088` confirmed), and the demo seed was applied afterward.
+  The `DATABASE_URL` is a write-only Vercel Preview Secret; do not print it.
 
 ## Deployment constraints and known limitations
 
-- **Preview-only.** No production release is authorized or performed.
-- **No demo seeding in production.** No production database mutation or
-  seeding occurs; demo accounts are not created in a deployed environment.
+- **Preview verified; Production not released.** The Preview full-stack E2E is
+  passing. No production release is authorized or performed without explicit
+  owner approval.
+- **Demo seed on Preview only.** The published demo accounts exist in the
+  Preview/Neon database and are org-scoped (not global admins). Before any
+  Production release, remove or rotate these known-password demo accounts.
 - **In-memory rate limiting.** The shared limiter in `api/app/ratelimit.py` is
   single-process/per-instance by design. In a scaled or multi-instance
   deployment each instance keeps its own counters; a distributed control is
   out of scope and is recorded as a known limitation, not silently faked.
-- **Media assets held back.** The discovery note records 8 media files
-  (~4.27 MiB); the actual untracked media set under `public/film/`,
-  `public/noir/` and `public/fonts/` is **13 files, 4,566,010 bytes (~4.36 MiB)**.
-  These remain uncommitted pending owner consent on provenance. A Git-based
-  deploy that needs them is blocked until that consent is given; do not work
-  around it by committing them.
+- **Cinematic media published.** The owner confirmed the film, audio/music,
+  voiceover and noir artwork are all original (2026-11-22) and authorized
+  publication. `public/film/`, `public/noir/` and `public/fonts/` are committed
+  and served with correct MIME types (`video/mp4`, `image/webp`, `font/woff2`,
+  `text/vtt`). Font notices (SIL OFL 1.1) are preserved.
 - **No fabricated verification.** `vercel build` / `vercel preview` have not
   been run here; the schema, framework auto-detection, Vite env inlining and
   static-asset resolution remain **Unverified**.
