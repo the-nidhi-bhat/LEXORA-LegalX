@@ -86,6 +86,11 @@ export function saveProfile(profile: DemoProfile): DemoProfile {
   return normalized
 }
 
+export function readGuidedStep(stepCount: number): number {
+  const step = Number(readText('legalx:guided-step', '0'))
+  return Number.isInteger(step) && step >= 0 && step < stepCount ? step : 0
+}
+
 export function readSettings(): DemoSettings {
   const settings = { ...DEFAULT_SETTINGS }
   const stored = safeRead<Partial<DemoSettings> | null>(SETTINGS_KEY, null)

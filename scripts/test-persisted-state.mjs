@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readStoredProfile, PROFILE_KEY, readSettings, SETTINGS_KEY } from '../src/demo-state.ts'
+import { readGuidedStep, readStoredProfile, PROFILE_KEY, readSettings, SETTINGS_KEY } from '../src/demo-state.ts'
 
 const records = new Map()
 globalThis.window = { localStorage: { getItem: key => records.get(key) ?? null } }
@@ -12,3 +12,8 @@ assert.equal(profile.name, 'Reviewer')
 
 records.set(SETTINGS_KEY, JSON.stringify({ emailNotifications: false, blockCriticalMismatches: 'false', extra: true }))
 assert.deepEqual(readSettings(), { emailNotifications: false, blockCriticalMismatches: true, askForSourceClauses: true, requireWalletConfirmation: true })
+
+for (const [stored, expected] of [['NaN', 0], ['1.5', 0], ['-1', 0], ['5', 0], ['3', 3]]) {
+  records.set('legalx:guided-step', stored)
+  assert.equal(readGuidedStep(5), expected)
+}

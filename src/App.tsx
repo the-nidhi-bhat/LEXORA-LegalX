@@ -4,7 +4,7 @@ import { ContractIR } from './features/contract-ir/ContractIR'
 import { PublicStory } from './PublicStory'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { DEMO_ACCOUNTS, ROLE_DESCRIPTIONS, ROLE_LABELS, ROLE_NAV, type Role, canAccessRoute, hasPermission, maskFinancials } from './rbac'
-import { AI_DRAFT_KEY, INVITES_KEY, MILESTONES_KEY, NOTIFICATIONS_KEY, WALLET_KEY, defaultProfile, effectiveAccount, readJson, readSettings, readStoredProfile, readText, readWorkflow, saveProfile, saveSettings, writeJson, writeText, writeWorkflow, type DemoSettings, type WorkflowState } from './demo-state'
+import { AI_DRAFT_KEY, INVITES_KEY, MILESTONES_KEY, NOTIFICATIONS_KEY, WALLET_KEY, defaultProfile, effectiveAccount, readGuidedStep, readJson, readSettings, readStoredProfile, readText, readWorkflow, saveProfile, saveSettings, writeJson, writeText, writeWorkflow, type DemoSettings, type WorkflowState } from './demo-state'
 import { generateSolidity, runGenerationTests } from './solidity'
 import { buildClausesFromIr, deriveTraceability } from './traceability'
 import { computeDrift, detectAndApplyDrift, ensureIntegrityFields, getAuditTrail, hashIr, hashSolidity, logEvent, recordVersion, snapshotApproved, verifyAuditTrail } from './workflow-integrity'
@@ -1057,7 +1057,7 @@ function Settings({ role, onRoleChange }: { role: Role; onRoleChange: (role: Rol
 ]
 
 function DemoControlCenter({ onNavigate, onRoleChange }: { onNavigate: (p: string) => void; onRoleChange: (role: Role) => void }) {
-  const [step, setStep] = useState(() => Number(localStorage.getItem('legalx:guided-step') || 0))
+  const [step, setStep] = useState(() => readGuidedStep(DEMO_STEPS.length))
   const [active, setActive] = useState(() => localStorage.getItem('legalx:guided-active') === 'true')
   const [paused, setPaused] = useState(() => localStorage.getItem('legalx:guided-paused') === 'true')
   const [notice, setNotice] = useState(active ? 'Your checkpoint is saved in this browser.' : 'Ready when you are.'); const [networkMode, setNetworkMode] = useState<'normal' | 'slow' | 'offline'>(() => (localStorage.getItem('legalx:network-mode') as 'normal' | 'slow' | 'offline') || 'normal')
