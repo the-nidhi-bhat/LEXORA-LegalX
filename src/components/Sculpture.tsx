@@ -4,7 +4,11 @@ import * as T from 'three'
 export default function Sculpture({ chapter, onFailure }: { chapter: number; onFailure: () => void }) {
   const host = useRef<HTMLDivElement>(null)
   const selected = useRef(chapter)
-  useEffect(() => { selected.current = chapter }, [chapter])
+  const invalidate = useRef<(() => void) | null>(null)
+  useEffect(() => {
+    selected.current = chapter
+    invalidate.current?.()
+  }, [chapter])
   useEffect(() => {
     const node = host.current!
     let renderer: T.WebGLRenderer
@@ -63,7 +67,13 @@ export default function Sculpture({ chapter, onFailure }: { chapter: number; onF
     const motion=matchMedia('(prefers-reduced-motion: reduce)')
     let disposed=false,visible=false,frame=0,yaw=0,tilt=0,time=0,last=0
     const weights: number[]=groups.map((_,i)=>i===selected.current?1:0)
+    function scheduleDraw() {
+      if (visible && !disposed && !frame) frame = requestAnimationFrame(draw)
+    }
+    invalidate.current = scheduleDraw
+    motion.addEventListener('change', scheduleDraw)
     function draw(now:number){
+      frame = 0
       if(disposed||!visible)return
       if(!motion.matches)time+=Math.min(50,now-last)/1000
       last=now
@@ -79,16 +89,17 @@ export default function Sculpture({ chapter, onFailure }: { chapter: number; onF
         g.position.y=(1-weight)*.6+(motion.matches?0:.08*Math.sin(time*1.5))
         if(i===4)g.children.slice(2).forEach((bar,j)=>{bar.position.x=(1-weight)*(j%2?3:-3)})
       })
-      renderer.render(scene,camera);frame=requestAnimationFrame(draw)
+      renderer.render(scene,camera)
+      if (!motion.matches) scheduleDraw()
     }
-    const resize=new ResizeObserver(()=>{const {width,height}=node.getBoundingClientRect();if(width&&height){renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix()}})
+    const resize=new ResizeObserver(()=>{const {width,height}=node.getBoundingClientRect();if(width&&height){renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();scheduleDraw()}})
     resize.observe(node)
-    const observer=new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;cancelAnimationFrame(frame);if(visible)frame=requestAnimationFrame(draw)})
+    const observer=new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;cancelAnimationFrame(frame);frame=0;scheduleDraw()})
     observer.observe(node)
-    const point=(e:PointerEvent)=>{if(e.pointerType==='mouse'||e.buttons){const r=node.getBoundingClientRect();yaw=(e.clientX-r.left)/r.width-.5;tilt=.8*((e.clientY-r.top)/r.height-.5)}}
+    const point=(e:PointerEvent)=>{if(e.pointerType==='mouse'||e.buttons){const r=node.getBoundingClientRect();yaw=(e.clientX-r.left)/r.width-.5;tilt=.8*((e.clientY-r.top)/r.height-.5);scheduleDraw()}}
     const lost=(e:Event)=>{e.preventDefault();onFailure()}
     renderer.domElement.addEventListener('webglcontextlost',lost);node.addEventListener('pointermove',point)
-    return ()=>{disposed=true;cancelAnimationFrame(frame);observer.disconnect();resize.disconnect();node.removeEventListener('pointermove',point);renderer.domElement.removeEventListener('webglcontextlost',lost);scene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose()});[gold,paper,slate,red].forEach(m=>m.dispose());renderer.dispose();renderer.domElement.remove()}
+    return ()=>{disposed=true;invalidate.current=null;motion.removeEventListener('change',scheduleDraw);cancelAnimationFrame(frame);observer.disconnect();resize.disconnect();node.removeEventListener('pointermove',point);renderer.domElement.removeEventListener('webglcontextlost',lost);scene.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose()});[gold,paper,slate,red].forEach(m=>m.dispose());renderer.dispose();renderer.domElement.remove()}
   },[onFailure])
   return <div className="sculpture-canvas" ref={host} aria-hidden="true"/>
 }

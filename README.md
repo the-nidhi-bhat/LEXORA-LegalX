@@ -48,10 +48,10 @@ flowchart TD
     R --> S[Agreement, parity and approval services]
     S --> Q[SQLAlchemy]
     Q --> L[(SQLite for local development)]
-    Q --> P[(PostgreSQL for production)]
+    Q --> P[(Neon PostgreSQL deployment target)]
 ```
 
-Vite builds the frontend into `dist/`. The repository's Vercel configuration defines separate frontend and FastAPI services and forwards `/api/*` to the API. PostgreSQL connectivity, migrations and deployment health require verification in each environment. The browser never needs a database credential. [Deployment guide](docs/VERCEL_DEPLOYMENT.md)
+Vite builds the frontend into `dist/`. The repository's Vercel configuration defines separate frontend and FastAPI services and forwards `/api/*` to the API. The deployment target is an external Neon PostgreSQL database. OpenCode owns provisioning, migration and seed verification. A healthy frontend alone does not establish that authenticated writes persist. The browser never needs a database credential. [Deployment guide](docs/VERCEL_DEPLOYMENT.md)
 
 ## Run locally
 
@@ -116,13 +116,17 @@ Run pytest using the project Python environment. The Playwright configs start th
 | `scripts/`, `e2e/` | Test drivers, demo rehearsals and browser journeys |
 | `docs/` | API, architecture, security, operations and project history, including delivery reports, rehearsal records and archived visual evidence |
 
-The root contains the HTML entry point, dependency manifests, TypeScript, Vite and Playwright configuration, Alembic and pytest configuration, deployment routing and project handovers. Browse the [complete recursive repository inventory on main](https://api.github.com/repos/the-nidhi-bhat/LEXORA-LegalX/git/trees/main?recursive=1). For the complete file inventory at any revision, run `git ls-tree -r --name-only HEAD`.
+The root contains the HTML entry point, dependency manifests, TypeScript, Vite and Playwright configuration, Alembic and pytest configuration, deployment routing and project handovers. For the complete file inventory at any revision, run `git ls-tree -r --name-only HEAD`.
 
 ## Team and licensing
 
 Team LEXORA built LegalX for HackIndia 2026. Repository history credits Iffa Attar with the visual foundation and typed API client, Samruddhi Gundappanavar with backend workflow implementation, and Nidhi with parity integration and delivery. Additional contributions and co-authorship are recorded in Git history. [Contribution guide](CONTRIBUTING.md)
 
 The repository has **no adopted project-wide license**. The proposed MIT text is awaiting an owner decision. Bundled fonts carry their own SIL OFL notices. Film, caption and artwork redistribution require separate clearance. [Licensing review](docs/LICENSING_REVIEW.md) · [Media provenance](docs/MEDIA_PROVENANCE.md)
+
+## Security
+
+The server derives identity and workspace membership from the session, validates CSRF on authenticated writes, and scopes agreement queries to the active organization. The Trust Passport exposes verification evidence; execution still requires server-side permission and approval checks. The browser role selector belongs to the guest demo. [Security model](docs/SECURITY.md) ? [Role permissions](docs/RBAC.md)
 
 ## Current boundaries
 
