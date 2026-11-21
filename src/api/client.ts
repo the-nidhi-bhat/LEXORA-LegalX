@@ -37,7 +37,8 @@ function toErrorEnvelope(code: ApiErrorCode | string, message: string, details?:
 async function parseEnvelope<T>(res: Response): Promise<ApiEnvelope<T>> {
   const contentType = res.headers.get('content-type') || ''
   let body: any = null
-  if (contentType.includes('application/json')) {
+  const mediaType = contentType.split(';')[0].trim().toLowerCase()
+  if (mediaType === 'application/json' || mediaType.endsWith('+json')) {
     try { body = await res.json() } catch {
       if (res.ok && res.status !== 204 && res.status !== 205) {
         return toErrorEnvelope('INVALID_RESPONSE', 'Response contained invalid JSON')

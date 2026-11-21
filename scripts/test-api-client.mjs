@@ -51,4 +51,8 @@ globalThis.fetch = async () => new Response('{', { headers: { 'Content-Type': 'a
 const malformed = await api.apiClient.get('/agreements')
 assert.equal(malformed.ok, false)
 assert.equal(malformed.error.code, 'INVALID_RESPONSE')
+globalThis.fetch = async () => new Response('{"id":"agreement-1"}', {
+  headers: { 'Content-Type': 'Application/Vnd.legalx+Json; charset=utf-8' },
+})
+assert.deepEqual(await api.apiClient.get('/agreements/1'), { ok: true, data: { id: 'agreement-1' } })
 console.log('api client tests passed')
