@@ -11,3 +11,46 @@ __pycache__/
 .pytest_cache/
 .venv/
 *.egg-info/
+
+# Generated test artifacts (Playwright / cleanup)
+test-results/
+playwright-report/
+html-report/
+blob-report/
+qa-screenshots/e2e-*/
+# Keep cited E2E evidence folders (referenced by delivery reports)
+!qa-screenshots/e2e-2026-11-20T19-58-58-997Z/
+!qa-screenshots/e2e-2026-11-20T19-59-40-997Z/
+!qa-screenshots/e2e-2026-11-20T19-59-40-997Z-report/
+!qa-screenshots/e2e-2026-11-21T02-31-45-803Z/
+!qa-screenshots/e2e-2026-11-21T02-31-45-803Z-report/
+!qa-screenshots/e2e-2026-11-21T02-36-17-233Z/
+!qa-screenshots/e2e-2026-11-21T02-36-17-233Z-report/
+# Diagnostic outputs and local databases
+*_output.txt
+pytest_*.txt
+pytest_*.out
+tsc_output.txt
+vite_out*.txt
+*.out
+*.db
+# Keep report-referenced diagnostic outputs (protected evidence)
+!completion_status.txt
+!full_test_output.txt
+!gemini_test_output.txt
+!output.txt
+!pytest_derive.out
+!pytest_final.txt
+!pytest_full.txt
+!pytest_gemini.txt
+!pytest_gemini_final.txt
+!pytest_output1.txt
+!skip_output.txt
+
+# Local coverage and incremental compiler output
+/coverage/
+/.coverage
+/htmlcov/
+*.tsbuildinfo
+/qa-screenshots/final-walkthrough/
+/qa-screenshots/noir-2/

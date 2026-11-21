@@ -8,6 +8,7 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
   retryDelayMs?: number
   json?: unknown
   query?: Record<string, string | number | boolean | undefined | null>
+  csrfToken?: string
 }
 
 function sleep(ms: number) { return new Promise((r) => setTimeout(r, ms)) }
@@ -39,12 +40,17 @@ async function parseEnvelope<T>(res: Response): Promise<ApiEnvelope<T>> {
     try { body = await res.text() } catch { body = null }
   }
   if (body && typeof body === 'object' && ('ok' in body)) return body as ApiEnvelope<T>
+  // Backend compatibility: FastAPI/custom envelope { error: { code, message, details }, request_id }
+  if (body && typeof body === 'object' && body.error && !('ok' in body)) {
+    const err = body.error || {}
+    return toErrorEnvelope(err.code || (res.status === 401 ? 'UNAUTHORIZED' : res.status === 403 ? 'FORBIDDEN' : res.status === 404 ? 'NOT_FOUND' : 'UNKNOWN_ERROR'), err.message || `Request failed (${res.status})`, err.details ?? body, err.request_id || body.request_id || body.requestId)
+  }
   if (res.ok) return { ok: true, data: (body ?? ({} as T)) as T }
   return toErrorEnvelope(res.status === 401 ? 'UNAUTHORIZED' : res.status === 403 ? 'FORBIDDEN' : res.status === 404 ? 'NOT_FOUND' : 'UNKNOWN_ERROR', typeof body === 'string' ? body : (body?.message || `Request failed (${res.status})`), body)
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<ApiEnvelope<T>> {
-  const { timeoutMs = API_TIMEOUT_MS, retry = API_RETRY_ATTEMPTS, retryDelayMs = API_RETRY_DELAY_MS, json, query, headers, ...init } = options
+  const { timeoutMs = API_TIMEOUT_MS, retry = API_RETRY_ATTEMPTS, retryDelayMs = API_RETRY_DELAY_MS, json, query, headers, csrfToken, ...init } = options
   const method = (init.method || 'GET').toUpperCase()
   const canRetry = method === 'GET' || method === 'HEAD'
   let attempt = 0
@@ -54,10 +60,12 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     const timer = setTimeout(() => controller.abort(), timeoutMs)
     try {
       const res = await fetch(buildUrl(path, query), {
+        credentials: init.credentials ?? 'include',
         ...init,
         method,
         headers: {
           ...(json !== undefined ? { 'Content-Type': 'application/json' } : {}),
+          ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
           ...(headers || {}),
         },
         body: json !== undefined ? JSON.stringify(json) : (init as any).body,
@@ -94,11 +102,79 @@ export const apiClient = {
   del<T>(path: string, options?: RequestOptions) { return apiRequest<T>(path, { ...options, method: 'DELETE' }) },
 }
 
-// Planned endpoint helpers (frontend-ready; availability depends on backend contracts/implementation).
+/* ------------------------------------------------------------------------
+   Endpoint helpers wired to the real FastAPI backend.
+   Every helper returns ApiEnvelope<T> ({ ok, data } | { ok:false, error })
+   so callers can fall back to local demo state without hiding failures.
+   All paths below are relative to getApiBaseUrl() (/api/v1 by default).
+   ------------------------------------------------------------------------ */
+
+export interface UserOut {
+  id: string; email: string; name: string; initials: string; role: string
+  organization_id: string; organization_name: string
+}
+export interface SessionOut {
+  user: UserOut; permissions: string[]; csrf_token: string; expires_at: string
+}
+
+export const authApi = {
+  signIn: (email: string, password: string) =>
+    apiClient.post<SessionOut>('/auth/session', { email, password }),
+  me: () => apiClient.get<SessionOut>('/me'),
+  signOut: (csrfToken?: string) =>
+    apiClient.del<Record<string, never>>('/auth/session', csrfToken ? { csrfToken } : undefined),
+}
+
 export const agreementsApi = {
-  list: (params?: Record<string, any>) => apiClient.get('/agreements', { query: params }),
-  get: (id: string) => apiClient.get(`/agreements/${encodeURIComponent(id)}`),
-  create: (body: unknown) => apiClient.post('/agreements', body),
-  reviewAction: (id: string, body: unknown) => apiClient.post(`/agreements/${encodeURIComponent(id)}/review`, body),
-  versions: (id: string) => apiClient.get(`/agreements/${encodeURIComponent(id)}/versions`),
+  list: (params?: Record<string, string | number | boolean | undefined | null>) =>
+    apiClient.get<any>('/agreements', { query: params }),
+  get: (id: string) => apiClient.get<any>(`/agreements/${encodeURIComponent(id)}`),
+  create: (body: unknown) => apiClient.post<any>('/agreements', body),
+  update: (id: string, body: unknown, csrfToken?: string) =>
+    apiClient.patch<any>(`/agreements/${encodeURIComponent(id)}`, body, csrfToken ? { csrfToken } : undefined),
+  versions: (id: string) => apiClient.get<any>(`/agreements/${encodeURIComponent(id)}/versions`),
+}
+
+export const versionsApi = {
+  list: (agreementId: string) =>
+    apiClient.get<any>(`/agreements/${encodeURIComponent(agreementId)}/versions`),
+  create: (agreementId: string, body: unknown, csrfToken?: string) =>
+    apiClient.post<any>(`/agreements/${encodeURIComponent(agreementId)}/versions`, body, csrfToken ? { csrfToken } : undefined),
+  approve: (agreementId: string, versionNumber: number | string, body: unknown, csrfToken?: string) =>
+    apiClient.post<any>(`/agreements/${encodeURIComponent(agreementId)}/versions/${encodeURIComponent(String(versionNumber))}/approve`, body, csrfToken ? { csrfToken } : undefined),
+}
+
+export const activityApi = {
+  list: (params?: Record<string, string | number | boolean | undefined | null>) =>
+    apiClient.get<any>('/activity', { query: params }),
+}
+
+export const executionApi = {
+  run: (agreementId: string, body?: unknown, csrfToken?: string) =>
+    apiClient.post<any>(`/agreements/${encodeURIComponent(agreementId)}/execution`, body ?? {}, csrfToken ? { csrfToken } : undefined),
+}
+
+export const parityApi = {
+  verify: (agreementId: string, version: number | string, executionParameters: unknown, csrfToken?: string) =>
+    apiClient.post<any>(`/agreements/${encodeURIComponent(agreementId)}/versions/${encodeURIComponent(String(version))}/verify`, { execution_parameters: executionParameters }, csrfToken ? { csrfToken } : undefined),
+  trustPassport: (agreementId: string, version: number | string, csrfToken?: string) =>
+    apiClient.get<any>(`/agreements/${encodeURIComponent(agreementId)}/trust-passport`, { query: { version }, ...(csrfToken ? { csrfToken } : {}) }),
+}
+
+/** Health endpoint has no /api/v1 prefix; call it directly via absolute path. */
+export async function healthApi(): Promise<ApiEnvelope<any>> {
+  const timeoutMs = API_TIMEOUT_MS
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch('/api/health', { credentials: 'include', signal: controller.signal })
+    clearTimeout(timer)
+    const ct = res.headers.get('content-type') || ''
+    const body = ct.includes('application/json') ? await res.json() : await res.text()
+    if (res.ok) return { ok: true, data: body }
+    return toErrorEnvelope('UNKNOWN_ERROR', (body as any)?.message || `Health request failed (${res.status})`, body)
+  } catch (err: any) {
+    clearTimeout(timer)
+    return toErrorEnvelope(err?.name === 'AbortError' ? 'TIMEOUT' : 'NETWORK_ERROR', err?.message || 'Health request failed')
+  }
 }

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 
-const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
-const css = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8')
+const app = (await Promise.all(['../src/App.tsx', '../src/features/contract-ir/ContractIR.tsx'].map(path => readFile(new URL(path, import.meta.url), 'utf8')))).join('\n')
+const css = await readFile(new URL('../src/styles/styles.css', import.meta.url), 'utf8')
 const rehearsal = await readFile(new URL('./rehearse-demo.mjs', import.meta.url), 'utf8')
 
 const required = [

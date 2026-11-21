@@ -1,0 +1,4 @@
+﻿@layer legacy, foundation;
+@import "./styles.css" layer(legacy);
+@import "./theme.css" layer(foundation);
+@import "./controls.css" layer(foundation);

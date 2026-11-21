@@ -1,0 +1,841 @@
+/* --------------------------------------------------------------------------
+   3. Global shell — consistent surface & typography
+   ------------------------------------------------------------------------- */
+body,
+.app-shell,
+.demo-center,
+.auth-page,
+.info-page,
+.onboarding {
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+.app-main,
+.workspace-content {
+  background: var(--bg);
+}
+
+*,
+*::before,
+*::after {
+  border-color: var(--border-default);
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-fg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--focus-ring-outer);
+}
+
+/* --------------------------------------------------------------------------
+   4. Text collisions — separate adjacent label/value inline elements
+   The JSX renders <small>Label</small><strong>Value</strong> with no whitespace.
+   Force block display + consistent spacing in the affected containers.
+   ------------------------------------------------------------------------- */
+.stat-card,
+.lx-kpi,
+.kpi-card {
+  display: flex !important;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-card > small,
+.lx-kpi > small,
+.kpi-card > small,
+.stat-card .kpi-label {
+  display: block;
+  margin: 0;
+  font: 600 0.68rem/1.3 var(--sans);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.stat-card > strong,
+.lx-kpi > strong,
+.kpi-card > strong,
+.stat-card .kpi-value {
+  display: block;
+  margin: 0;
+  font: 600 1.9rem/1.1 var(--display);
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.stat-card > span:last-child,
+.lx-kpi > span:last-child,
+.kpi-card > span:last-child,
+.stat-card .kpi-sub {
+  display: block;
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.stat-card .stat-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 2px;
+  border-radius: var(--radius-sm);
+  background: rgba(23, 43, 69, 0.1);
+  color: var(--accent-primary);
+}
+
+:root[data-theme='dark'] .stat-card .stat-icon {
+  background: rgba(88, 185, 172, 0.14);
+  color: var(--accent-primary);
+}
+
+/* KPI grid — balanced, consistent cards */
+.lx-kpi-grid,
+.stats-grid,
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+.lx-kpi-grid .stat-card,
+.stats-grid .stat-card,
+.kpi-grid .kpi-card {
+  min-height: 132px;
+  padding: 20px;
+}
+
+/* Quick-action tiles: label above description */
+.quick-actions a,
+.quick-actions button,
+.demo-action,
+.action-tile {
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+}
+
+.quick-actions b,
+.quick-actions strong,
+.action-tile b,
+.action-tile strong {
+  display: block;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.quick-actions small,
+.action-tile small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+/* Sidebar identity / profile — no collisions */
+.sidebar-profile,
+.sidebar-profile > div,
+.app-brand,
+.workspace-info {
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sidebar-profile b,
+.sidebar-profile small,
+.workspace-info b,
+.workspace-info small {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-profile b,
+.workspace-info b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.sidebar-profile small,
+.workspace-info small {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.role-switcher {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.role-switcher > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.role-switcher b,
+.role-switcher small {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.demo-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-pill);
+  background: var(--warning-bg);
+  color: var(--warning);
+  font: 700 0.58rem/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* --------------------------------------------------------------------------
+   5. Charts — readable axes and spacing
+   ------------------------------------------------------------------------- */
+.chart,
+.chart-area,
+.chart-labels {
+  min-width: 0;
+}
+
+.chart-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0 8px 0 0;
+  color: var(--text-muted);
+  font: 500 0.68rem/1.2 var(--mono);
+}
+
+.chart-labels span {
+  display: block;
+  padding: 2px 0;
+}
+
+.chart-x-labels,
+.chart .x-axis,
+.chart-axis-x {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font: 500 0.66rem/1.2 var(--mono);
+}
+
+.chart-x-labels span,
+.chart .x-axis span,
+.chart-axis-x span {
+  flex: 1 1 0;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart svg path {
+  stroke: var(--accent-primary);
+}
+
+:root[data-theme='dark'] .chart svg path {
+  stroke: var(--accent-primary);
+}
+
+/* --------------------------------------------------------------------------
+   6. Cards, tables, badges — consistent surfaces & depth
+   ------------------------------------------------------------------------- */
+.panel,
+.stat-card,
+.table-panel,
+.transaction-panel,
+.team-card,
+.profile-card,
+.quick-panel,
+.role-card,
+.ai-composer,
+.extraction-card,
+.code-workbench,
+.ir-card,
+.workbench-card,
+.lifecycle-card,
+.document-panel,
+.settings-form,
+.demo-session-card,
+.demo-step-panel,
+.demo-scenario-list,
+.price-card,
+.showcase-panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  color: var(--text-primary);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.badge i {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.btn {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: background-color 0.18s var(--ease-standard, ease), color 0.18s ease,
+    border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+input,
+select,
+textarea {
+  background: var(--control-bg);
+  color: var(--control-fg);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-sm);
+}
+
+/* --------------------------------------------------------------------------
+   7. Theme toggle — refined segmented control with sun/moon
+   ------------------------------------------------------------------------- */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 4px 10px 4px 6px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+.theme-toggle-track {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  border: 1px solid var(--border-default);
+}
+
+.theme-toggle-track > span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  transition: transform 0.22s var(--ease-standard, ease);
+}
+
+.theme-toggle[aria-pressed='true'] .theme-toggle-track > span {
+  transform: translateX(14px);
+}
+
+/* Add a subtle sun/moon glyph if the component exposes icon slots */
+.theme-toggle svg {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-primary);
+}
+
+/* --------------------------------------------------------------------------
+   8. Demo / checkpoint banners — calm, contained
+   ------------------------------------------------------------------------- */
+.prototype-banner,
+.recovery-banner,
+.demo-notice,
+.demo-checkpoint-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid var(--info-border);
+  border-radius: var(--radius-md);
+  background: var(--info-bg);
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.prototype-banner svg,
+.demo-notice svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--info);
+}
+
+.prototype-banner b,
+.demo-checkpoint-banner b {
+  color: var(--text-primary);
+}
+
+/* --------------------------------------------------------------------------
+   9. Navigation — clean active/hover states, no crowding
+   ------------------------------------------------------------------------- */
+.nav-group a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.nav-group a:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.nav-group a.active {
+  background: rgba(23, 43, 69, 0.1);
+  color: var(--accent-primary);
+  box-shadow: inset 3px 0 0 var(--accent-primary);
+}
+
+:root[data-theme='dark'] .nav-group a.active {
+  background: rgba(88, 185, 172, 0.12);
+}
+
+.nav-group a.active svg {
+  color: var(--accent-primary);
+}
+
+.app-sidebar {
+  background: var(--surface-1);
+  color: var(--text-primary);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.app-sidebar .nav-group > span {
+  color: var(--text-muted);
+}
+
+.app-topbar {
+  background: var(--surface-overlay);
+  border-bottom: 1px solid var(--border-subtle);
+  backdrop-filter: blur(12px);
+}
+
+/* Notification count */
+.notif-count,
+.notification-count,
+.badge-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-primary);
+  color: #fff;
+  font: 700 0.62rem/1 var(--sans);
+}
+
+/* --------------------------------------------------------------------------
+   10. Secondary-page hierarchy
+   ------------------------------------------------------------------------- */
+.page-header h1,
+.page-header h2,
+.welcome-row h1 {
+  font-family: var(--display);
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+
+.section-kicker,
+.kicker {
+  color: var(--accent-primary);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--text-primary);
+}
+
+/* --------------------------------------------------------------------------
+   11. Responsive polish
+   ------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .lx-kpi-grid,
+  .stats-grid,
+  .kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+  }
+
+  .lx-kpi-grid .stat-card,
+  .stats-grid .stat-card,
+  .kpi-grid .kpi-card {
+    min-height: 120px;
+    padding: 16px;
+  }
+
+  .stat-card > strong,
+  .lx-kpi > strong {
+    font-size: 1.6rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .lx-kpi-grid,
+  .stats-grid,
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* --------------------------------------------------------------------------
+   12. Reduced motion
+   ------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .theme-toggle,
+  .theme-toggle-track > span,
+  .nav-group a {
+    transition: none !important;
+  }
+}
+
+
+/* ==========================================================================
+   13. ASTRA targeted layout fixes (real selectors from DOM probe @b126@)
+   The earlier .lx-kpi-grid rules targeted a class that does not exist on
+   /app. The real containers are .stat-grid / .chart-x / .chart-labels.
+   ========================================================================== */
+
+/* KPI cards: 4-column compact grid instead of one full-width stack */
+.stat-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  gap: 16px !important;
+  width: 100%;
+}
+.stat-grid .stat-card {
+  min-height: 128px;
+  height: auto;
+  width: 100%;
+  padding: 18px 20px;
+  box-sizing: border-box;
+}
+.stat-card > small,
+.stat-card > span:first-of-type {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted, #667085);
+}
+.stat-card > strong {
+  display: block;
+  font-family: var(--display, 'Source Serif 4', serif);
+  font-size: 1.9rem;
+  line-height: 1.1;
+  color: var(--text-primary, #172536);
+}
+.stat-card > span:last-child {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-muted, #667085);
+  font-size: 0.78rem;
+}
+.stat-card .stat-icon {
+  width: 34px;
+  height: 34px;
+  margin-bottom: 10px;
+  border-radius: 9px;
+  display: inline-grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--accent-primary, #172B45) 12%, transparent);
+  color: var(--accent-primary, #172B45);
+}
+
+/* Chart x-axis dates: distribute instead of fusing into one string */
+.chart-x {
+  display: flex !important;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+.chart-x span {
+  flex: 1 1 0;
+  text-align: center;
+  white-space: nowrap;
+  font-family: var(--mono, 'IBM Plex Mono', monospace);
+  font-size: 0.7rem;
+  color: var(--text-muted, #667085);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chart-labels span {
+  width: auto;
+  text-align: right;
+  padding-right: 10px;
+  font-family: var(--mono, 'IBM Plex Mono', monospace);
+  font-size: 0.7rem;
+  color: var(--text-muted, #667085);
+}
+.chart {
+  height: 300px;
+}
+.chart-area {
+  min-height: 220px;
+}
+
+/* Role / identity selector: compact, non-colliding */
+.role-switcher {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border-default, #E3E7E9);
+  border-radius: 12px;
+  background: var(--surface-1, #fff);
+}
+.role-switcher > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.role-switcher .section-kicker {
+  display: block;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint, #8A94A3);
+}
+.role-switcher b {
+  display: block;
+  font-weight: 650;
+  color: var(--text-primary, #172536);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.role-switcher small {
+  display: block;
+  color: var(--text-muted, #667085);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+}
+.role-switcher select {
+  width: 100%;
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border-default, #E3E7E9);
+  background: var(--surface-2, #FBF9F6);
+  color: var(--text-primary, #172536);
+  padding: 0 10px;
+}
+
+/* Sidebar identity block: prevent "OwnerNirvan Shah" fusion */
+.sidebar-profile,
+.app-brand,
+.workspace-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.sidebar-profile b,
+.workspace-info b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary, #172536);
+}
+.sidebar-profile small,
+.workspace-info small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted, #667085);
+}
+
+/* Quick actions: icon + text on separate aligned lines */
+.quick-actions .action-tile,
+.action-tile {
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.quick-actions .action-tile b {
+  display: block;
+  color: var(--text-primary, #172536);
+}
+.quick-actions .action-tile small {
+  display: block;
+  color: var(--text-muted, #667085);
+}
+
+/* Theme toggle: slightly larger, refined */
+.theme-toggle {
+  min-height: 38px;
+  padding: 5px 12px 5px 6px;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 999px;
+}
+
+/* Compact demo / audit banners */
+.prototype-banner,
+.recovery-banner,
+.demo-notice,
+.demo-progress {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+@media (max-width: 520px) {
+  .stat-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   14. ASTRA final collision refinements
+   Generic separations for adjacent inline section-kicker + heading, and
+   chart footer text overlapping the plot/x-axis.
+   ------------------------------------------------------------------------- */
+.section-kicker {
+  display: block;
+  margin: 0 0 6px;
+}
+
+.section-kicker + h1,
+.section-kicker + h2,
+.section-kicker + h3,
+.section-kicker + b,
+.section-kicker + strong {
+  display: block;
+  margin: 0 0 8px;
+}
+
+.panel h2,
+.panel h3 {
+  display: block;
+  margin: 0 0 8px;
+}
+
+.chart {
+  position: relative;
+  overflow: visible;
+}
+
+.chart-footer,
+.chart small,
+.chart .muted {
+  display: block;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle, var(--border, #E3E7E9));
+  line-height: 1.5;
+}
+
+.chart-x {
+  margin-bottom: 4px;
+}
+
+/* Keep action/quick tiles from letting icon+text fuse or wrap awkwardly */
+.quick-actions button,
+.action-tile {
+  min-height: 64px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-kicker,
+  .chart-footer {
+    transition: none;
+  }
+}
+
+
+/* ------------------------------------------------------------------
+   15. ASTRA chart layout — y-axis left, svg fill, x-axis inside (fixed)
+   ------------------------------------------------------------------ */
+.chart { display: flex !important; flex-direction: row !important; gap: 12px; height: 240px !important; }
+.chart-labels { flex: 0 0 34px !important; width: 34px !important; display: flex !important; flex-direction: column !important; justify-content: space-between !important; align-items: flex-end !important; padding: 0 6px 26px 0 !important; }
+.chart-labels span { width: auto !important; text-align: right !important; font-size: .7rem !important; color: var(--text-muted); }
+.chart-area { flex: 1 1 auto !important; position: relative; min-height: 0; display: flex; flex-direction: column; }
+.chart-area svg { flex: 1 1 auto; width: 100%; min-height: 0; }
+.chart-grid { position: absolute; inset: 0 0 24px 0; pointer-events: none; }
+.chart-x { display: flex !important; justify-content: space-between; gap: 6px; flex: 0 0 auto; margin-top: 2px; }
+.chart-x span { flex: 1; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .68rem; color: var(--text-muted); }

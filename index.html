@@ -3,9 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#111d1b" />
-    <meta name="description" content="LEGALX turns human agreements into executable trust." />
-    <title>LEGALX — Executable trust for real-world agreements</title>
+    <meta name="theme-color" content="#f5f1e8" />
+    <meta name="description" content="Review contract clauses, compare execution terms and trace decisions in LegalX." />
+    <title>LegalX — Agreement intelligence</title>
+    <script>
+      // Theme bootstrap: runs synchronously before first paint so the stored
+      // preference never flashes. Default is the light identity.
+      (function () {
+        try {
+          var stored = window.localStorage.getItem('legalx:theme');
+          var theme = stored === 'dark' ? 'dark' : 'light';
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.style.colorScheme = theme;
+          document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#101820' : '#f5f1e8';
+        } catch (e) {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

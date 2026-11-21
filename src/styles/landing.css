@@ -1,0 +1,201 @@
+/* Public folio. Scene materials are local originals rendered for each palette. */
+.folio-mast, .public-folio, .folio-footer {
+  --folio-gutter: clamp(20px, 5.2vw, 92px);
+  --folio-max: 1720px;
+  --folio-display: var(--display, Georgia, serif);
+  --folio-accent: #795b38;
+  --folio-ink: #17232b;
+  --folio-ground: #f5f1e8;
+  --folio-paper: #fffdf6;
+  --folio-line: #d2cbbd;
+  --folio-secondary: #53616a;
+  --folio-action: #213840;
+  --folio-action-text: #fffaf0;
+  --folio-bronze: #c4a176;
+  color: var(--folio-ink);
+  background: var(--folio-ground);
+  font-family: var(--sans, 'Segoe UI', sans-serif);
+}
+:root[data-theme=dark] :is(.public-folio,.folio-mast,.folio-footer) {
+  --folio-ground: #101820;
+  --folio-paper: #18232d;
+  --folio-line: #37444b;
+  --folio-ink: #f5f1e8;
+  --folio-secondary: #b4bdc8;
+  --folio-accent: #d1b27e;
+  --folio-action: #dec59e;
+  --folio-action-text: #17232b;
+}
+.folio-mast {border-bottom:1px solid var(--folio-line); position:relative; z-index:8}
+.folio-mast-inner {max-width:var(--folio-max);margin:auto;min-height:78px;padding:12px var(--folio-gutter);display:flex;align-items:center;justify-content:space-between;gap:28px}
+.folio-nav,.folio-nav-end,.folio-actions {display:flex;align-items:center;gap:clamp(12px,2.2vw,36px)}
+.folio-nav a,.folio-nav-end a,.folio-footer a {text-decoration:none;color:inherit}
+.folio-nav a {font-size:14px;font-weight:550;position:relative;padding-block:8px}
+.folio-nav a::after {content:'';position:absolute;height:1px;left:0;right:0;bottom:2px;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform .16s ease}
+.folio-nav a:is(:hover,[aria-current=page])::after {transform:scaleX(1)}
+.folio-signin {display:flex;align-items:center;gap:12px;font-weight:650;font-size:14px}
+.folio-mast .folio-nav-end {gap:16px}
+.folio-nav-end .theme-toggle {min-height:34px}
+.folio-menu,.folio-nav .nav-mobile-signin {display:none}
+.folio-hero,.folio-chapter,.folio-section,.folio-reading-list,.folio-closing,.folio-plans,.folio-contact,.folio-questions {max-width:var(--folio-max);margin-inline:auto;padding-inline:var(--folio-gutter);box-sizing:border-box}
+.folio-hero {display:grid;grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr);align-items:center;gap:clamp(30px,4.8vw,88px);padding-block:clamp(36px,4.5vw,80px)}
+.public-folio h1,.public-folio h2,.public-folio h3,.public-folio h4 {color:var(--folio-ink);margin:0}
+.folio-hero-copy .folio-label,.folio-chapter .folio-label,.public-folio .folio-label {display:flex;align-items:center;gap:10px;color:var(--folio-accent);font:600 12px/1.3 var(--sans,sans-serif);letter-spacing:.1em;text-transform:uppercase}
+.folio-label i {width:25px;height:1px;background:currentColor;display:inline-block}
+.folio-hero h1 {font:400 clamp(76px,8.5vw,154px)/.89 var(--folio-display);letter-spacing:-.065em;margin:clamp(22px,3vw,52px) 0 26px}
+.folio-hero h1 em {font-weight:400;color:var(--folio-accent)}
+.folio-deck {max-width:36ch;font-size:clamp(17px,1.38vw,23px);line-height:1.55;color:var(--folio-secondary);margin:0}
+.folio-actions {margin-top:34px;flex-wrap:wrap;gap:20px}
+.public-folio .folio-button,.public-folio .folio-link {min-height:46px;display:inline-flex;align-items:center;justify-content:center;gap:16px;text-decoration:none;font:650 14px/1.2 var(--sans,sans-serif)}
+.public-folio .folio-button {background:var(--folio-action);color:var(--folio-action-text);padding:12px 20px;border-radius:3px}
+.public-folio .folio-link {color:var(--folio-ink);border-bottom:1px solid var(--folio-line)}
+.folio-button span,.folio-link span {transition:transform .18s}
+.folio-button:hover span,.folio-link:hover span {transform:translate(2px,-1px)}
+.contract-exhibit {margin:0;align-self:center;min-width:0}
+.contract-exhibit-scene {position:relative;isolation:isolate;overflow:hidden;aspect-ratio:1.17;background:var(--folio-line)}
+.contract-exhibit-scene img {display:block;width:100%;height:100%;object-fit:cover;object-position:center 43%;transform:translate(var(--shift-x,0px),var(--shift-y,0px)) scale(1.025);transition:transform .2s ease-out}
+.exhibit-notation {position:absolute;right:5%;width:22%;display:flex;align-items:center;color:#f7f1df;filter:drop-shadow(0 1px 2px #201a16);transition:top .4s cubic-bezier(.2,.65,.25,1)}
+.exhibit-notation i {flex:1;height:1px;background:currentColor;position:relative}
+.exhibit-notation i::before {content:'';position:absolute;left:0;top:-3px;width:7px;height:7px;background:currentColor;border-radius:50%}
+.exhibit-notation span {background:#26343b;padding:4px 6px;font:600 11px/1 var(--mono,monospace)}
+.exhibit-readout {position:absolute;inset:auto 0 0;padding:42px clamp(16px,2vw,30px) 18px;background:linear-gradient(transparent,rgba(13,21,24,.92) 66%);color:#fff9eb}
+.exhibit-readout small {color:#e9cda1;font:650 11px/1.6 var(--sans,sans-serif);letter-spacing:.08em;text-transform:uppercase}
+.exhibit-readout p {color:inherit;margin:4px 0 0;font:400 clamp(16px,1.45vw,23px)/1.3 var(--folio-display);max-width:39ch;min-height:2.6em}
+.exhibit-controls {display:grid;grid-template-columns:repeat(3,1fr)}
+.exhibit-controls button {background:transparent;border:0;border-bottom:1px solid var(--folio-line);padding:14px 5px;display:flex;align-items:center;justify-content:center;gap:7px;font:600 12px/1.3 var(--sans,sans-serif);color:var(--folio-secondary);cursor:pointer;min-height:44px}
+.exhibit-controls button span {font-size:10px;font-variant-numeric:tabular-nums;color:var(--folio-accent)}
+.exhibit-controls button[aria-pressed=true] {border-bottom:3px solid var(--folio-accent);color:var(--folio-ink)}
+.folio-section {padding-block:clamp(42px,6.2vw,106px);border-top:1px solid var(--folio-line)}
+.public-folio h2 {font:400 clamp(34px,4vw,70px)/1.05 var(--folio-display);letter-spacing:-.045em}
+.folio-heading {display:grid;grid-template-columns:1.25fr .75fr;align-items:end;gap:28px;margin-bottom:30px}
+.folio-heading .folio-label,.folio-section-intro .folio-label {margin-bottom:14px}
+.folio-heading p,.folio-index p,.folio-reading-list p,.folio-chapter p,.folio-contact p,.folio-plans p {font-size:16px;color:var(--folio-secondary);line-height:1.6;margin:0}
+.case-study {display:grid;grid-template-columns:minmax(200px,.7fr) minmax(0,2fr);border:1px solid var(--folio-line);background:var(--folio-paper)}
+.case-menu {padding:16px;display:grid;align-content:start;gap:3px;border-right:1px solid var(--folio-line)}
+.case-menu button,.case-controls button,.folio-choice button {background:transparent;color:var(--folio-ink);border:0;cursor:pointer}
+.case-menu button {display:grid;grid-template-columns:18px 1fr auto;align-items:center;gap:10px;width:100%;text-align:left;min-height:42px;padding:8px 12px;font-weight:550}
+.case-menu button[aria-pressed=true],.folio-choice button[aria-pressed=true] {background:var(--folio-action);color:var(--folio-action-text)}
+.case-menu small {opacity:1;color:inherit}
+.case-page {display:flex;flex-direction:column;min-width:0;padding:clamp(18px,3vw,46px)}
+.case-folio,.case-controls {display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.case-folio {color:var(--folio-secondary);font-size:12px;border-bottom:1px solid var(--folio-line);padding-bottom:12px}
+.case-evidence {padding-block:24px;flex:1;min-width:0}
+.case-evidence h3,.folio-index h3,.folio-reading-list h3 {font:500 clamp(24px,2.5vw,42px)/1.15 var(--folio-display);letter-spacing:-.025em}
+.case-evidence p,.case-evidence dt {font-size:14px;color:var(--folio-secondary)}
+.case-evidence blockquote {margin:20px 0 4px;padding-left:18px;border-left:2px solid var(--folio-accent);font:italic 400 clamp(20px,2vw,34px)/1.35 var(--folio-display)}
+.case-evidence dl div,.case-evidence :is(th,td) {padding:8px;border-bottom:1px solid var(--folio-line)}
+.case-evidence dl div {display:flex;justify-content:space-between;gap:12px}
+.case-evidence dd {margin:0}
+.case-evidence table {border-collapse:collapse;width:100%;font-size:14px;text-align:left}
+.case-evidence pre {white-space:pre-wrap;overflow-wrap:anywhere;padding:16px;background:var(--folio-ground);color:var(--folio-ink)}
+.case-controls {border-top:1px solid var(--folio-line);padding-top:10px}
+.case-controls :is(a,button) {color:var(--folio-ink);display:flex;align-items:center;gap:8px;min-height:36px;font:600 13px/1.3 var(--sans,sans-serif)}
+.folio-capabilities {display:grid;grid-template-columns:1fr 1.35fr;gap:clamp(24px,5vw,84px)}
+.folio-index a {display:flex;align-items:center;justify-content:space-between;gap:24px;border-top:1px solid var(--folio-line);padding:22px 0;color:inherit;text-decoration:none}
+.folio-index a:hover h3 {color:var(--folio-accent)}
+.folio-index p {margin-top:5px}
+.folio-index a>span {color:var(--folio-accent);font-size:22px}
+.folio-chapter {display:grid;grid-template-columns:1.5fr .68fr;align-items:stretch;gap:5vw;padding-block:clamp(38px,5vw,76px)}
+.folio-chapter h1 {font:400 clamp(42px,6vw,96px)/1 var(--folio-display);letter-spacing:-.055em;margin:18px 0}
+.folio-chapter p {max-width:52ch}
+.chapter-art {min-height:200px;background:center 42% / cover url('/noir/living-contract-day.webp')}
+:root[data-theme=dark] .chapter-art {background-image:url('/noir/living-contract.webp')}
+.folio-reading-list article {display:grid;grid-template-columns:.8fr 1.2fr;gap:24px;padding:25px 0;border-top:1px solid var(--folio-line)}
+.folio-reading-list h4 {font-size:18px;margin-bottom:6px}
+.folio-closing {display:flex;justify-content:space-between;gap:28px;align-items:center;flex-wrap:wrap;background:var(--folio-paper);padding-block:clamp(34px,5vw,78px);border-block:1px solid var(--folio-line)}
+.folio-closing h2 {max-width:20ch}
+.folio-plans,.folio-reading-list,.folio-questions,.folio-contact {padding-bottom:clamp(38px,6vw,84px)}
+.folio-choice {display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.folio-choice button {border:1px solid var(--folio-line);padding:12px 16px;font-weight:600}
+.folio-plans article {padding:clamp(20px,3vw,44px);background:var(--folio-paper);border:1px solid var(--folio-line);display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.folio-plans h2 {margin:12px 0}
+.folio-plans li {padding:6px 0}
+.folio-contact a {margin:10px 20px 0 0}
+.folio-questions .page-header {display:none}
+.folio-questions .faq-grid {display:grid;grid-template-columns:2fr 1fr;gap:20px}
+.folio-footer {padding:44px var(--folio-gutter) 22px}
+.folio-footer-top,.folio-colophon {max-width:calc(var(--folio-max) - 2 * var(--folio-gutter));margin:auto}
+.folio-footer-top {display:grid;grid-template-columns:1.6fr repeat(3,1fr);gap:24px}
+.folio-footer-top>div {display:grid;align-content:start;justify-items:start;gap:6px}
+.folio-footer-top strong {margin-bottom:7px}
+.folio-footer-top p,.folio-footer-top a:not(.logo),.folio-colophon {color:var(--folio-secondary);font-size:14px}
+.folio-footer-top a:not(.logo) {padding:4px 0}
+.folio-colophon {display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding-top:20px;border-top:1px solid var(--folio-line);margin-top:30px}
+.folio-colophon span:nth-child(2) {margin-right:auto}
+@media(min-width:881px) and (prefers-reduced-motion:no-preference) {
+  .folio-hero-copy,.contract-exhibit {animation:folio-arrive .48s cubic-bezier(.2,.65,.25,1) both}
+  .contract-exhibit {animation-delay:.05s}
+  .case-evidence {animation:folio-arrive .18s ease-out}
+}
+@keyframes folio-arrive {from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+@media(max-width:880px) {
+  .folio-nav {display:none}
+  .folio-nav.open {display:grid;position:absolute;inset:100% 0 auto;background:var(--folio-paper);border-bottom:1px solid var(--folio-line);padding:14px var(--folio-gutter);gap:0;z-index:5}
+  .folio-nav.open a {padding:12px 0}
+  .folio-menu {display:grid;place-items:center;width:40px;height:40px;color:inherit;background:transparent;border:1px solid var(--folio-line);border-radius:3px}
+  .folio-nav .nav-mobile-signin {display:block}
+  .folio-mast-inner {min-height:64px}
+  .folio-hero {grid-template-columns:1fr 1fr;gap:22px}
+  .folio-hero h1 {font-size:clamp(60px,9vw,78px)}
+  .contract-exhibit-scene {aspect-ratio:.88}
+  .exhibit-controls button {flex-direction:column;gap:3px}
+  .case-menu {padding:9px}
+}
+@media(max-width:650px) {
+  .folio-mast-inner {gap:12px;padding-block:8px}
+  .folio-mast .folio-nav-end {gap:8px}
+  .folio-signin {display:none}
+  .folio-hero,.folio-heading,.folio-capabilities,.folio-chapter,.folio-plans article,.folio-reading-list article,.folio-questions .faq-grid {grid-template-columns:minmax(0,1fr)}
+  .folio-hero {gap:26px;padding-block:30px}
+  .folio-hero h1 {font-size:clamp(62px,16vw,86px);margin:20px 0 16px}
+  .folio-hero h1 br {display:none}
+  .folio-hero h1 em::before {content:' '}
+  .folio-actions {margin-top:20px;gap:14px}
+  .contract-exhibit-scene {aspect-ratio:1.22}
+  .exhibit-controls button {flex-direction:row;gap:4px;font-size:11px}
+  .folio-heading {gap:12px;margin-bottom:20px}
+  .case-study {grid-template-columns:minmax(0,1fr)}
+  .case-menu {display:flex;overflow:auto;border-right:0;border-bottom:1px solid var(--folio-line)}
+  .case-menu button {width:auto;display:flex;white-space:nowrap}
+  .case-menu small {display:none}
+  .folio-reading-list article {gap:9px}
+  .folio-chapter {gap:20px}
+  .chapter-art {min-height:0;height:130px;background-position:center 38%}
+  .folio-footer-top {grid-template-columns:repeat(3,1fr);gap:16px}
+  .folio-footer-top>div:first-child {grid-column:1/-1}
+  .folio-colophon {gap:8px 16px}
+}
+@media(prefers-reduced-motion:reduce) {
+  .public-folio *, .folio-mast * {animation:none;transition:none}
+  .contract-exhibit-scene img {transform:none}
+}
+.entry-hall {display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);min-height:100dvh;background:var(--bg);color:var(--ink)}
+.entry-art {min-height:100%;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;padding:clamp(28px,4vw,68px);color:#fff9eb;background:linear-gradient(180deg,rgba(13,21,24,.68),transparent 30%,transparent 60%,rgba(13,21,24,.92)),center/cover url('/noir/living-contract-day.webp')}
+:root[data-theme=dark] .entry-art {background-image:linear-gradient(180deg,rgba(13,21,24,.7),transparent 30%,transparent 60%,rgba(13,21,24,.9)),url('/noir/living-contract.webp')}
+.entry-art .logo,.entry-art .logo-name,.entry-art .logo-name span,.entry-art .logo-name small {color:#fff9eb}
+.entry-art>div>span {font-size:13px;letter-spacing:.1em}
+.entry-art>div>p {font:400 clamp(48px,6vw,112px)/1 var(--display);margin:12px 0 0;color:inherit;letter-spacing:-.045em}
+.entry-panel {width:min(100%,570px);padding:clamp(24px,4vw,64px);margin:auto}
+.entry-tools {display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:clamp(24px,4vw,58px)}
+.entry-tools>a {color:var(--muted);font-size:14px;text-decoration:none}
+.entry-hall .auth-form {display:grid;gap:14px;padding:0;border:0;background:transparent}
+.entry-hall .auth-form h1 {font:400 clamp(36px,3.6vw,66px)/1.06 var(--display);letter-spacing:-.04em;margin:0}
+.entry-hall .auth-form p {margin:0 0 8px}
+.entry-hall label {display:grid;gap:7px;font-weight:600}
+.entry-hall .auth-form .btn {justify-content:center;min-height:44px}
+.entry-hall .forgot {justify-self:start;color:var(--ink);background:transparent;border-color:var(--line)}
+.folio-onboarding>header {display:flex;align-items:center;justify-content:space-between;width:min(100%,740px);gap:20px}
+.folio-onboarding .choice-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:8px}
+.folio-onboarding .choice-grid button {display:grid;text-align:left;gap:6px;align-content:start;padding:14px;border:1px solid var(--line)}
+.folio-onboarding .choice-grid button.selected {box-shadow:inset 3px 0 var(--gold);background:var(--surface2)}
+.folio-policy h1,.demo-center-head h1 {font:400 clamp(40px,5vw,86px)/1.04 var(--display);letter-spacing:-.045em;margin:14px 0}
+.folio-policy .info-lede {max-width:60ch;font-size:20px;line-height:1.5;color:var(--muted)}
+.folio-policy .info-grid {border-top:1px solid var(--line);margin-top:28px;padding-top:20px}
+.folio-policy .info-grid p {font-size:16px;line-height:1.65;max-width:65ch}
+@media(max-width:650px) {
+  .entry-hall {grid-template-columns:minmax(0,1fr);align-content:start}
+  .entry-art {min-height:0;height:120px;background-position:center 38%;padding:18px 20px}
+  .entry-art>div {display:none}
+  .entry-panel {padding:24px 20px}
+}
+.auth-switch a {text-decoration:underline;text-underline-offset:.18em}
