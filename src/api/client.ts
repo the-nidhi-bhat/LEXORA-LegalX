@@ -11,7 +11,18 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
   csrfToken?: string
 }
 
-function sleep(ms: number) { return new Promise((r) => setTimeout(r, ms)) }
+function sleep(ms: number, signal?: AbortSignal | null) {
+  return new Promise<void>(resolve => {
+    function finish() {
+      clearTimeout(timer)
+      signal?.removeEventListener('abort', finish)
+      resolve()
+    }
+    const timer = setTimeout(finish, ms)
+    if (signal?.aborted) finish()
+    else signal?.addEventListener('abort', finish, { once: true })
+  })
+}
 
 function buildUrl(path: string, query?: RequestOptions['query']): string {
   const base = getApiBaseUrl()
@@ -64,7 +75,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   let attempt = 0
   let lastError: ApiErrorEnvelope | null = null
   while (attempt <= retry) {
+    if (init.signal?.aborted) return toErrorEnvelope('CANCELLED', 'Request cancelled')
     const controller = new AbortController()
+    const cancel = () => controller.abort()
+    init.signal?.addEventListener('abort', cancel, { once: true })
     const timer = setTimeout(() => controller.abort(), timeoutMs)
     try {
       const requestHeaders = new Headers(headers)
@@ -80,22 +94,26 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       })
       clearTimeout(timer)
       const env = await parseEnvelope<T>(res)
+      if (init.signal?.aborted) return toErrorEnvelope('CANCELLED', 'Request cancelled')
       if (!env.ok && canRetry && attempt < retry && isRetryableStatus(res.status)) {
         attempt += 1
-        await sleep(retryDelayMs * attempt)
+        await sleep(retryDelayMs * attempt, init.signal)
         continue
       }
       return env
     } catch (err: any) {
       clearTimeout(timer)
+      if (init.signal?.aborted) return toErrorEnvelope('CANCELLED', 'Request cancelled')
       const aborted = err?.name === 'AbortError'
       lastError = toErrorEnvelope(aborted ? 'TIMEOUT' : 'NETWORK_ERROR', aborted ? 'Request timed out' : (err?.message || 'Network request failed'), { path, method })
       if (canRetry && attempt < retry) {
         attempt += 1
-        await sleep(retryDelayMs * attempt)
+        await sleep(retryDelayMs * attempt, init.signal)
         continue
       }
       return lastError
+    } finally {
+      init.signal?.removeEventListener('abort', cancel)
     }
   }
   return lastError || toErrorEnvelope('UNKNOWN_ERROR', 'Request failed')
