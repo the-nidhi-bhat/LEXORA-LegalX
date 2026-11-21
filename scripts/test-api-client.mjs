@@ -40,4 +40,11 @@ for (const headers of [new Headers({ 'X-Trace': '123' }), [['X-Trace', '123']]])
   assert.equal(received.get('content-type'), 'application/json')
   assert.equal(received.get('x-csrf-token'), 'example-token')
 }
+let requestedUrl
+globalThis.fetch = async url => {
+  requestedUrl = url
+  return Response.json({})
+}
+await api.apiClient.get('/agreements?sort=name&page=1#results', { query: { page: 2, q: 'two words' } })
+assert.equal(requestedUrl, '/api/v1/agreements?sort=name&page=2&q=two+words#results')
 console.log('api client tests passed')

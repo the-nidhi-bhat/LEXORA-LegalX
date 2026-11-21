@@ -18,13 +18,16 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   const url = `${base}${normalizedPath}`
   if (!query) return url
-  const qs = new URLSearchParams()
+  const [resource, fragment] = url.split(/#(.*)/s)
+  const separator = resource.indexOf('?')
+  const pathname = separator < 0 ? resource : resource.slice(0, separator)
+  const qs = new URLSearchParams(separator < 0 ? '' : resource.slice(separator + 1))
   for (const [k, v] of Object.entries(query)) {
     if (v === undefined || v === null || v === '') continue
     qs.set(k, String(v))
   }
   const s = qs.toString()
-  return s ? `${url}?${s}` : url
+  return pathname + (s ? `?${s}` : '') + (fragment === undefined ? '' : `#${fragment}`)
 }
 
 function toErrorEnvelope(code: ApiErrorCode | string, message: string, details?: unknown, requestId?: string): ApiErrorEnvelope {
