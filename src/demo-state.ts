@@ -87,7 +87,13 @@ export function saveProfile(profile: DemoProfile): DemoProfile {
 }
 
 export function readSettings(): DemoSettings {
-  return { ...DEFAULT_SETTINGS, ...safeRead<Partial<DemoSettings>>(SETTINGS_KEY, {}) }
+  const settings = { ...DEFAULT_SETTINGS }
+  const stored = safeRead<Partial<DemoSettings> | null>(SETTINGS_KEY, null)
+  for (const key of Object.keys(settings) as (keyof DemoSettings)[]) {
+    const value = stored?.[key]
+    if (typeof value === 'boolean') settings[key] = value
+  }
+  return settings
 }
 
 export function saveSettings(settings: DemoSettings): DemoSettings {

@@ -9,3 +9,6 @@ assert.equal(profile.workspaceName, 'Acme Digital')
 assert.equal(profile.jobTitle, 'Product & AI lead')
 assert.equal(profile.useCase, 'Review')
 assert.equal(profile.name, 'Reviewer')
+
+records.set(SETTINGS_KEY, JSON.stringify({ emailNotifications: false, blockCriticalMismatches: 'false', extra: true }))
+assert.deepEqual(readSettings(), { emailNotifications: false, blockCriticalMismatches: true, askForSourceClauses: true, requireWalletConfirmation: true })
