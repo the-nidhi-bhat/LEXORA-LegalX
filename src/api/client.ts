@@ -92,8 +92,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
         body: json !== undefined ? JSON.stringify(json) : (init as any).body,
         signal: controller.signal,
       })
-      clearTimeout(timer)
       const env = await parseEnvelope<T>(res)
+      clearTimeout(timer)
+      if (controller.signal.aborted) throw new DOMException('Request aborted', 'AbortError')
       if (init.signal?.aborted) return toErrorEnvelope('CANCELLED', 'Request cancelled')
       if (!env.ok && canRetry && attempt < retry && isRetryableStatus(res.status)) {
         attempt += 1

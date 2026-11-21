@@ -69,3 +69,11 @@ assert.equal(cancelled.error.code, 'CANCELLED')
 assert.equal(attempts, 1)
 assert.equal((await api.apiClient.get('/again', { signal: cancellation.signal })).error.code, 'CANCELLED')
 assert.equal(attempts, 1)
+
+globalThis.fetch = async (_url, { signal }) => new Response(new ReadableStream({
+  start(stream) {
+    signal.addEventListener('abort', () => stream.error(signal.reason), { once: true })
+  },
+}), { headers: { 'Content-Type': 'application/json' } })
+const stalled = await api.apiClient.get('/slow-body', { timeoutMs: 10, retry: 0 })
+assert.equal(stalled.error.code, 'TIMEOUT')
