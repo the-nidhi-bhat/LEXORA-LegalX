@@ -15,7 +15,7 @@ Inventory confirmed by filesystem glob on 2026-11-21. Do not commit untracked me
 | `legalx.en.vtt` | Caption track referencing the film; authorship not recorded | **UNVERIFIED** |
 | `legalx.en.srt` | Caption track referencing the film; authorship not recorded | **UNVERIFIED** |
 
-The README's product-film section references `legalx.mp4`, `poster.jpg`, `legalx.vtt` and `legalx.en.vtt` by their real relative paths. That reference establishes **file existence only**, not rights to distribute.
+The local production workflow used original procedural document artwork, recorded LegalX UI, a generated score and local Kokoro narration. That production history does not establish clearance for every incorporated asset or voice. The release excludes these files pending an owner rights decision. A build containing the original MP4 and English VTT enables the native player. An optional poster and muted loop are detected separately at Vite startup.
 
 ## `public/noir/`
 
@@ -35,6 +35,12 @@ The README's product-film section references `legalx.mp4`, `poster.jpg`, `legalx
 | `instrument-serif-latin-400-italic.woff2` | Corresponding notice file present | **Known — SIL OFL 1.1 (per shipped notice)** |
 
 **Carve-out that must be preserved:** the OFL 1.1 notices in `public/fonts/` must remain with the font files. Fonts are **not** covered by any proposed MIT grant for project code; see [proposed LICENSE](proposed-LICENSE.md).
+
+## Release artwork and packaging
+
+The inline path in `src/App.tsx` is the existing product mark used in desktop and mobile navigation. The favicon and the raster social card reproduce that geometry. No separate master logo or trademark registration is asserted.
+
+The clean main checkout included none of the local film, noir or font binaries and had no tracked `.vercelignore`. Vite can publish only files present at build time. Licensed fonts and their original notices now ship together. Missing noir files select theme-aware background gradients. A build without film assets keeps the interactive sculpture and legal case study available. The protected Vercel preview redirects anonymous media requests to authentication; its downstream rewrite behavior requires an authorized check.
 
 ## Other repository images
 
