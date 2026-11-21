@@ -66,7 +66,12 @@ export function readStoredProfile(): DemoProfile | null {
   const value = safeRead<Partial<DemoProfile> | null>(PROFILE_KEY, null)
   if (!value || typeof value.name !== 'string' || !value.name.trim() || typeof value.email !== 'string') return null
   const role = ['owner', 'freelancer', 'legal_reviewer', 'org_admin', 'technical_auditor'].includes(value.role || '') ? value.role as Role : 'owner'
-  return { ...DEFAULT_PROFILE, ...value, role, name: value.name.trim(), email: value.email.trim() }
+  const text = (key: 'workspaceName' | 'jobTitle' | 'useCase') => {
+    const stored = value[key]
+    return typeof stored === 'string' && stored.trim() ? stored.trim() : DEFAULT_PROFILE[key]
+  }
+  return { role, name: value.name.trim(), email: value.email.trim(),
+    workspaceName: text('workspaceName'), jobTitle: text('jobTitle'), useCase: text('useCase') }
 }
 
 export function defaultProfile(role: Role = 'owner'): DemoProfile {
