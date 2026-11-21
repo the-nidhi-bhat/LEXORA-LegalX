@@ -4,10 +4,10 @@ const base = process.env.LEGALX_BASE_URL || 'http://127.0.0.1:3000'
 const startedAt = new Date().toISOString()
 const errors = []
 const recoveryActions = []
-const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
+const app = (await Promise.all(['../src/App.tsx', '../src/features/contract-ir/ContractIR.tsx'].map(path => readFile(new URL(path, import.meta.url), 'utf8')))).join('\n')
 const state = await readFile(new URL('../src/demo-state.ts', import.meta.url), 'utf8')
 const rbac = await readFile(new URL('../src/rbac.ts', import.meta.url), 'utf8')
-const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8')
+const styles = await readFile(new URL('../src/styles/styles.css', import.meta.url), 'utf8')
 const manifest = JSON.parse(await readFile(new URL('../public/manus-routes.json', import.meta.url), 'utf8'))
 
 const routeResults = []

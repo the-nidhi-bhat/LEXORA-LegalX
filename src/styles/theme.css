@@ -1,0 +1,69 @@
+﻿@font-face {
+  font-family: "DM Sans"; src: url("/fonts/dm-sans-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 1000; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Serif"; src: url("/fonts/instrument-serif-latin-400-normal.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Serif"; src: url("/fonts/instrument-serif-latin-400-italic.woff2") format("woff2");
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+
+/* The two material palettes supply every shared component and data surface. */
+:root {
+  color-scheme: light;
+  --bg: #f6f7f4; --surface: #ffffff; --surface2: #eef1ee; --surface3: #e4e8e4;
+  --ink: #17232b; --muted: #56646a; --faint: #626d70; --line: #d5dcd8; --line2: #a5a296;
+  --gold: #80613c; --steel: #36505c; --oxblood: #753f47; --on-action: #fffdf8;
+  --action: #263d42; --action-hover: #3b5459; --rail: #19282d; --rail-text: #f5f1e8;
+  --success: #32644d; --success-bg: #e1ede3; --warning: #79551d; --warning-bg: #f5e9d3;
+  --error: #8a444b; --error-bg: #f6e4e3; --info: #33576a; --info-bg: #e3ebef;
+  --shadow-sm: 0 1px 3px rgb(40 41 34 / 7%); --shadow-md: 0 12px 32px rgb(47 43 34 / 9%);
+  --display: "Instrument Serif", Georgia, serif; --sans: "DM Sans", "Segoe UI", Arial, sans-serif;
+  --mono: ui-monospace, Consolas, monospace; --radius-sm: 5px; --radius-md: 9px; --radius-pill: 999px;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #101820; --surface: #18232d; --surface2: #1e2b36; --surface3: #263743;
+  --ink: #f5f1e8; --muted: #b4bdc8; --faint: #a0adb6; --line: #35454f; --line2: #63747c;
+  --gold: #c2a271; --steel: #a1bfca; --oxblood: #d29aa2; --on-action: #17232b;
+  --action: #d9c29b; --action-hover: #ecdbba; --rail: #0b1118; --rail-text: #f5f1e8;
+  --success: #a0d9ba; --success-bg: #19352c; --warning: #e4c78a; --warning-bg: #383023;
+  --error: #f0abb1; --error-bg: #3c252d; --info: #a9d1e4; --info-bg: #22333e;
+  --shadow-sm: 0 1px 4px rgb(0 0 0 / 18%); --shadow-md: 0 14px 36px rgb(0 0 0 / 22%);
+}
+
+/* Aliases keep existing workflow components on the same semantic palette. */
+:root {
+  --bg-alt: var(--surface2); --surface-1: var(--surface); --surface-2: var(--surface2); --surface-3: var(--surface3);
+  --surface-overlay: var(--surface); --paper: var(--surface); --text-primary: var(--ink); --text-secondary: var(--muted);
+  --text-muted: var(--muted); --text-faint: var(--faint); --line-strong: var(--line2); --border: var(--line);
+  --border-default: var(--line); --border-subtle: var(--line); --divider: var(--line); --gold-dark: var(--gold);
+  --accent-primary: var(--action); --accent-secondary: var(--steel); --accent-tertiary: var(--gold);
+  --accent-gold: var(--gold); --accent-forest: var(--success); --forest: var(--success); --forest-soft: var(--success-bg);
+  --danger: var(--error); --danger-soft: var(--error-bg); --warning-soft: var(--warning-bg); --navy: var(--ink); --navy2: var(--steel);
+  --palette-midnight: var(--rail); --palette-gold-text: var(--gold); --link: var(--steel); --link-hover: var(--ink);
+  --crimson: var(--oxblood); --crimson2: var(--oxblood); --rose: var(--oxblood); --lime: var(--success);
+  --btn-primary-bg: var(--action); --btn-primary-bg-hover: var(--action-hover); --btn-primary-fg: var(--on-action);
+  --btn-primary-border: var(--action); --btn-secondary-bg: var(--surface); --btn-secondary-bg-hover: var(--surface2);
+  --btn-secondary-fg: var(--ink); --btn-secondary-border: var(--line2); --btn-tertiary-bg: transparent;
+  --btn-tertiary-bg-hover: var(--surface2); --btn-tertiary-fg: var(--steel); --control-bg: var(--surface);
+  --control-fg: var(--ink); --control-border: var(--line2); --control-placeholder: var(--faint); --control-border-hover: var(--steel);
+  --control-disabled-bg: var(--surface2); --control-disabled-fg: var(--muted); --control-disabled-border: var(--line);
+  --focus-ring: var(--steel); --focus-ring-outer: color-mix(in srgb,var(--steel) 20%,transparent);
+  --selection-bg: var(--steel); --selection-fg: var(--surface); --font-display: var(--display); --font-mono: var(--mono);
+  --font-sans: var(--sans); --shadow: var(--shadow-sm); --shadow-xs: var(--shadow-sm); --shadow-focus: 0 0 0 3px var(--focus-ring-outer);
+  --success-border: color-mix(in srgb,var(--success) 34%,var(--surface)); --warning-border: color-mix(in srgb,var(--warning) 34%,var(--surface));
+  --error-border: color-mix(in srgb,var(--error) 34%,var(--surface)); --info-border: color-mix(in srgb,var(--info) 34%,var(--surface));
+  --lx-bg: var(--bg); --lx-bg-2: var(--surface2); --lx-ink: var(--ink); --lx-body: var(--muted); --lx-dim: var(--muted);
+  --lx-faint: var(--faint); --lx-surface: var(--surface); --lx-surface-2: var(--surface2); --lx-surface-3: var(--surface3);
+  --lx-line: var(--line); --lx-line-strong: var(--line2); --lx-line-bold: var(--line2); --lx-accent: var(--action); --lx-accent-hover: var(--action-hover);
+  --lx-accent-bright: var(--gold); --lx-accent-soft-text: var(--steel); --lx-accent-deep: var(--steel);
+  --lx-accent-soft: var(--surface2); --lx-accent-tint: var(--surface2); --lx-accent-deep-tint: var(--surface3);
+  --lx-accent-border: var(--line2); --lx-accent-strong: var(--steel); --lx-on-accent: var(--on-action);
+  --lx-white: #fff; --lx-paper: var(--surface); --lx-nav-bg: var(--surface); --lx-panel-bg: var(--surface);
+  --lx-danger: var(--error); --lx-warn-text: var(--warning); --lx-warn-solid: var(--warning);
+  --lx-warn-tint: var(--warning-bg); --lx-warn-border: var(--warning-border); --lx-shadow-md: var(--shadow-md); --lx-shadow-lg: var(--shadow-md);
+}

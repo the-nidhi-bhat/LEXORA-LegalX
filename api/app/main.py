@@ -204,6 +204,11 @@ def create_app() -> FastAPI:
 
     app.include_router(execution_router.router)
 
+    # PHASE6 parity HTTP surface: verify mutation + evidence-only read.
+    from api.app.routers import parity as parity_router
+
+    app.include_router(parity_router.router)
+
     return app
 
 
