@@ -80,8 +80,20 @@ def _clean_agreement_data(engine, seeded):
         Milestone,
         VersionApproval,
     )
+    from api.app.models.verification import (
+        ExecutionParametersRow,
+        IRDocument,
+        ParityRun,
+        VerificationRun,
+    )
 
+    # Verification artefacts are test-local too. Delete them before the
+    # agreement rows they reference, and do not touch any migration.
     order = [
+        VerificationRun,
+        ParityRun,
+        ExecutionParametersRow,
+        IRDocument,
         ActivityEvent,
         IdempotencyKey,
         VersionApproval,
