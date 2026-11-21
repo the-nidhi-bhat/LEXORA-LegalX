@@ -8,7 +8,7 @@
 
 **Overall verdict: PARTIAL.**
 
-All six phase reports are delivered with one honest verdict each; the documentation set (README, PRD, API, SECURITY, CONTRIBUTING, licensing material, media provenance) is written. M5 verification is **Passed** (8/8 checks, exit 0 each; see `PHASE_10_TESTING.md`). But live deployment is **Blocked** (no owner-provided `DATABASE_URL`), licensing is **Blocked** (no consent, unresolved media provenance), R7 Git delivery is **Pending**, and the jury PDF does not exist. The interactive demo is ready; the product is **not production-ready**, and no universal legal enforceability is claimed.
+All six phase reports are delivered with one honest verdict each; the documentation set (README, PRD, API, SECURITY, CONTRIBUTING, licensing material, media provenance) is written. M5 verification is **Passed** (8/8 checks, exit 0 each; see `PHASE_10_TESTING.md`). R7 Git delivery is **Done** — the scoped OMEGA changes were committed (`2565807`) and pushed to `origin/integration/legalx-v1` with the remote SHA verified. But live deployment is **Blocked** (no owner-provided `DATABASE_URL`), licensing is **Blocked** (no consent, unresolved media provenance), and the jury PDF does not exist. The interactive demo is ready; the product is **not production-ready**, and no universal legal enforceability is claimed.
 
 ## Consolidated phase verdicts
 
@@ -72,7 +72,7 @@ The dispatch brief for this workstream listed a different set — `PHASE_08_DEPL
 ## Next actions
 
 1. M5 verification: complete — pytest 447 passed / 3 skipped / 1 warning in 91.04 s (exit 0), tsc exit 0, npm test 9/9, build exit 0 (Vite v8.3.6, 40 modules), parity E2E 10 passed / 0 failed / 0 skipped in 1.7m, rehearse:judge PASS 30/30 pages + 5/5 roles in 53.747 s (see `PHASE_10_TESTING.md`).
-2. R7 — Git delivery: PENDING. Scoped commit/push to origin/integration/legalx-v1 not yet performed; will be fast-forward only, verify remote SHA after push, exclude DBs/secrets/generated/media-without-consent.
+2. R7 — Git delivery: DONE. Scoped commit `2565807` (22 OMEGA files, fast-forward) pushed to origin/integration/legalx-v1; local HEAD == remote SHA verified; DBs/secrets/generated/media-without-consent excluded.
 3. Owner gate: provide `DATABASE_URL` and authorize preview-only deploy; resolve licensing/media consent.
 4. Decide whether to author a jury PDF for HackIndia 2026 (HI025038).
 5. Documentation rewrites installed to their tracked paths in M4 and links re-validated — COMPLETE (not pending). The `docs/final-delivery/_rewrite/` copies are provenance-only and excluded from commit.
