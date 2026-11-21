@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session as DbSession
 from api.app.db import get_db
 from api.app.deps import SessionContext, require
 from api.app.errors import ApiError, field_detail
-from api.app.models.agreements import ActivityEvent
+from api.app.models.agreements import ActivityEvent, Agreement
 from api.app.schemas.activity import ActivityEventOut
 from api.app.timeutil import to_wire
 

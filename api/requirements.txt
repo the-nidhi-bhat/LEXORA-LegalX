@@ -1,58 +1,17 @@
-<<<<<<< HEAD
 # Python dependencies for the LEGALX API modules.
+# The parity engine (P0-06 / P0-07) and contract intelligence (P1-04) modules run
+# on Pydantic v2. The Gemini SDK is optional and imported lazily; the system keeps
+# working in deterministic/demo mode without a provider key.
 #
-# The parity engine (P0-06 / P0-07) and contract intelligence (P1-04) modules
-# run on Pydantic v2. The Gemini SDK is an optional runtime dependency: it is
-# only needed by the Gemini extraction provider, and the rest of the package
-# works without it.
-#
-# Install with:
-#   pip install -r api/requirements.txt
+# Install with:  pip install -r api/requirements.txt
 
-# Python dependencies for the LEGALX API modules.
-#
-# The parity engine (P0-06 / P0-07) and contract intelligence (P1-04) modules
-# run on Pydantic v2. The Gemini SDK is an optional runtime dependency: it is
-# only needed by the Gemini extraction provider, and the rest of the package
-# works without it.
-#
-# Install with:
-#   pip install -r api/requirements.txt
 pydantic>=2.13,<3
-
-# Optional: live Gemini extraction (P1-04).
-# The SDK is imported lazily; without it only the Gemini provider is unusable.
 google-genai>=2.0,<4
-
-# LEGALX API runtime dependencies (P0-01).
-# Everything is imported from the repository root, e.g.  python -m pytest api/tests -q
 fastapi>=0.142,<1
 uvicorn>=0.30,<1
 SQLAlchemy>=2.0,<3
 alembic>=1.14,<2
 argon2-cffi>=25.1,<26
-# PostgreSQL driver for the production database (dev/tests may use SQLite).
 psycopg[binary]>=3.2,<4
-
-# Test tooling
 pytest>=8.3,<10
 httpx>=0.28,<1
-=======
-# LEGALX API runtime dependencies (P0-01).
-#
-# Install:  pip install -r api/requirements.txt
-# Everything is imported from the repository root, e.g.  python -m pytest api/tests -q
-
-fastapi>=0.142,<1
-uvicorn>=0.30,<1
-pydantic>=2.13,<3
-SQLAlchemy>=2.0,<3
-alembic>=1.14,<2
-argon2-cffi>=25.1,<26
-# PostgreSQL driver for the production database (dev/tests may use SQLite).
-psycopg[binary]>=3.2,<4
-
-# Test tooling
-pytest>=8.3,<10
-httpx>=0.28,<1
->>>>>>> origin/main
