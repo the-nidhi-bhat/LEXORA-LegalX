@@ -1,5 +1,5 @@
 ---
-document_status: "Final — Phase 6 frontend closeout + P0/P1 closeout delivery report (QA and Reviewer gates Pending)"
+document_status: "Final — Phase 6 frontend closeout + P0/P1 closeout delivery report (scoped commit 65c523c pushed & remote-verified; QA and Reviewer gates Pending)"
 scope: "Phase 6 frontend closeout + proof of real backend-derived parity in browser + demo readiness + verification + scoped commits/push. NO blockchain/smart contracts; NO new Phase 7 spec."
 baseline:
   branch: "integration/legalx-v1"
@@ -194,15 +194,20 @@ All results below are recorded evidence; this report's author did not independen
 
 ## 12. Git delivery — scoped commit, push, and remote verification
 
-The remaining delivery action is a **scoped commit + push**. Intended target:
+**Delivery completed (2026-11-21).**
 
-- **Push target:** `origin/integration/legalx-v1` → `https://github.com/the-nidhi-bhat/LEXORA-LegalX.git` (the correct remote).
-- **Legacy `LegalX-pro` push is DISABLED** and must not be used.
-- **Non-force push only.** No branch switch, force-push, reset, clean, or `main` merge (HC constraints).
-- Scope discipline: stage only this task's files via **explicit `git add`** (the broader dirty tree is cumulative pre-existing/concurrent work, including the UI-agent's changes); do not stage the protected backend byte-identical files, DBs, caches, or secrets.
-- After push, verify the remote commit SHA matches the local commit SHA and record the GitHub URL.
+- **Push target used:** `origin/integration/legalx-v1` → `https://github.com/the-nidhi-bhat/LEXORA-LegalX.git` (the correct remote). The legacy `LegalX-pro` remote has push DISABLED and was not used.
+- **No force-push, branch switch, reset, clean, or `main` merge** (HC-1..HC-7 honored).
+- **Commit:** `65c523c20cd2cded8822b739fc0f3cb25bf70179` — `feat(parity): close Phase 6 frontend — verify real backend parity in browser` — 42 files, 5025 insertions / 706 deletions.
+- **Scope note:** the frontend parity integration could NOT be committed in isolation — the committed `src/App.tsx` imports `parityApi` from `src/api/client.ts` (HEAD client.ts had zero parityApi) plus UI-agent modules and the new `src/styles/` tree (old `src/styles.css` deleted, `main.tsx` reimported). A partial 4-file commit would not compile, so the full verified frontend (including UI-agent redesign) was committed per owner decision "Commit full verified frontend".
+- **Excluded (deliberately unstaged, preserved in working tree):** backend bug-fix files `api/app/intelligence/extractor.py`, `api/app/routers/activity.py`, `api/requirements.txt`, `api/tests/test_activity.py` (Phase 4/5 work; backend already delivered at `22dbf21`). No DB, secret, `.env`, binary, or generated artifact staged (safety scans clean).
+- **Verification on the committed tree:** `tsc` exit 0; `npm run build` exit 0 (Vite 8.3.6; `index-B6Q4ziVK.js` 479.17 kB + `Sculpture-CUOBJndu.js` 539.45 kB; pre-existing >500 kB advisory, NO new advisory). Pre-commit full evidence: pytest 442 passed / 3 skipped / 1 warning in 114.35s, `npm test` 9/9, parity E2E 10 passed / 0 failed / 0 skipped in 55.4s, rehearsals judge 30/30 pages 5/5 roles + demo 3/3, rendered-UI evidence gate PASS.
+- **Push:** `git fetch origin` then fast-forward check (remote `22dbf21`, merge-base `22dbf21`) → `git push origin HEAD:integration/legalx-v1` exit 0 (`22dbf21..65c523c`).
+- **Remote verification:** `git ls-remote` remote SHA = `65c523c20cd2cded8822b739fc0f3cb25bf70179` = local HEAD (EXACT MATCH); `git status -sb` = `## integration/legalx-v1...origin/integration/legalx-v1` with no divergence.
+- **GitHub branch URL:** https://github.com/the-nidhi-bhat/LEXORA-LegalX/tree/integration/legalx-v1
+- Ports 8010 (PID 23840) and 3002 (PID 36736) remained listening throughout (concurrent UI-agent services, untouched).
 
-<!-- GIT_DELIVERY_PENDING -->
+A follow-up documentation-only commit may update this report's sign-off notes after the QA/reviewer gates re-run; that does not alter the implementation commit `65c523c`.
 
 ---
 
@@ -210,7 +215,7 @@ The remaining delivery action is a **scoped commit + push**. Intended target:
 
 ### QA gate
 - Status: **Pending**
-- Notes: Earlier QA acceptance gate `ses_e011e5a72ffeafuiX4nxlPGmaW` was dispatched prematurely (before M3/rehearsal/report/commit) and returned FAIL for incompleteness, not fabrication; it confirmed core implementation criteria PASS (R1.2/R1.3/R2.1/R2.3/R2.4/R2.5/R2.6/R2.7/R3.1/R4.1/R4.2). Items flagged unmet then — R1.1/R4.5/R5.1–R5.4 (report/commit/push), R3.2/R3.3/F-3 (rehearsal + rendered UI), F-4 (UI evidence) — are now addressed except the commit/push (R5.2/R5.3), with E2E corroborated (F-6) and the no-extraction deviation justified (F-7). Gate to be RE-RUN after this report + commit + push. Recorded as evidence only; formal sign-off remains Pending.
+- Notes: Earlier QA acceptance gate `ses_e011e5a72ffeafuiX4nxlPGmaW` was dispatched prematurely (before M3/rehearsal/report/commit) and returned FAIL for incompleteness, not fabrication; it confirmed core implementation criteria PASS (R1.2/R1.3/R2.1/R2.3/R2.4/R2.5/R2.6/R2.7/R3.1/R4.1/R4.2). Every item it flagged unmet has since been closed: report written (R5.1), rehearsals run (R3.2/F-3: judge 30/30 pages 5/5 roles, demo 3/3), rendered-UI evidence gate PASS (R3.3/F-4: viewports 320/768/1024/1440, light/dark, reduced-motion, heuristic keyboard, 6 data-testids), and scoped commit + push + remote SHA verification completed (R5.2/R5.3/R5.4: commit `65c523c`, remote SHA exact match). E2E corroborated (F-6), no-extraction deviation justified (F-7). Recorded as evidence only; formal sign-off remains Pending.
 
 ### Reviewer gate
 - Status: **Pending**
