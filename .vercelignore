@@ -1,0 +1,31 @@
+# Build/test caches and local environments
+.venv
+node_modules
+__pycache__
+.pytest_cache
+*.pyc
+dist
+
+# Test evidence and reports (not needed at runtime; large)
+qa-screenshots
+test-results
+playwright-report
+html-report
+blob-report
+docs/screenshots
+
+# Dev-only source trees
+e2e
+design-system
+server
+scripts
+
+# Cinematic media — owner confirmed all-original rights (2026-11-22); published.
+# Font license notices are preserved in public/fonts/ (SIL OFL 1.1).
+
+# Local env and git internals
+.git
+.vercel
+.env
+.env.*
+*.db

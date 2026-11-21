@@ -1,0 +1,76 @@
+1
+00:00:00,050 --> 00:00:00,900
+[Low strings enter]
+
+2
+00:00:01,000 --> 00:00:03,325
+An agreement is more than words.
+
+3
+00:00:03,665 --> 00:00:06,865
+What happens when the code disagrees
+with the promise?
+
+4
+00:00:09,680 --> 00:00:11,067
+Meet LegalX.
+
+5
+00:00:11,407 --> 00:00:16,441
+Design, build, and delivery.
+Three approvals release three equal payments.
+
+6
+00:00:18,680 --> 00:00:22,311
+Here, a separate website agreement
+shows how intake works.
+
+7
+00:00:22,651 --> 00:00:26,426
+Local extraction links each payment
+to its source clause.
+
+8
+00:00:27,680 --> 00:00:30,535
+Contract IR gives the agreement a structure.
+
+9
+00:00:30,875 --> 00:00:35,432
+Inspect the milestones, the review window,
+and the evidence behind each field.
+
+10
+00:00:36,020 --> 00:00:36,640
+[Two descending tones]
+
+11
+00:00:36,680 --> 00:00:40,947
+₹30,000 agreed. ₹35,000 encoded.
+
+12
+00:00:41,287 --> 00:00:43,783
+A ₹5,000 discrepancy.
+
+13
+00:00:45,680 --> 00:00:49,462
+Watch the review period change.
+Verification catches the mismatch.
+
+14
+00:00:49,802 --> 00:00:53,431
+Restoring the terms still leaves
+human approval as a separate gate.
+
+15
+00:00:54,050 --> 00:00:54,640
+[Closing chime]
+
+16
+00:00:54,680 --> 00:00:55,789
+LegalX.
+
+17
+00:00:56,409 --> 00:01:01,465
+Verify the agreement. Review the evidence.
+Then decide whether to execute.
+

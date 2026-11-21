@@ -1,0 +1,22 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:09.000
+The client agrees to pay ₹30,000 in three approved milestones of ₹10,000 each.
+
+00:00:09.000 --> 00:00:18.000
+This jury example records design, build and delivery as three separate obligations.
+
+00:00:18.000 --> 00:00:27.000
+In this separate ₹50,000 workspace example, local extraction links fields to their source.
+
+00:00:27.000 --> 00:00:36.000
+Inspect the resolved milestones, review period and provenance in structured or JSON view.
+
+00:00:36.000 --> 00:00:45.000
+In the jury example, ₹35,000 encoded exceeds ₹30,000 signed. The mismatch blocks release.
+
+00:00:45.000 --> 00:00:54.000
+In the workspace, a simulated change to the review period also blocks verification until restored.
+
+00:00:54.000 --> 00:01:03.000
+The workflow requires verification and human approval. This film illustrates the gate; it submits no transaction.
