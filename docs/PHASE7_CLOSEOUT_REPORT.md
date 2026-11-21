@@ -24,7 +24,7 @@ What was actually closed:
 - **Real backend-derived parity proof (R2):** `e2e/parity.spec.ts` now contains a real backend-result UI proof; the previously-skipped deeper UI test runs and passes. Result: **10 passed / 0 failed / 0 skipped in 55.4s**, exit 0 (developer-reported, corroborated by `.last-run.json`).
 - **Demo readiness (R3):** golden-path rehearsals PASS (`judge` 30/30 pages, 5/5 roles; `demo` 3/3 personas); rendered-UI evidence gate overall **PASS**, including responsive viewports, light/dark, reduced-motion, and an honest empty state.
 - **Security/regression (R4):** protected backend files are **byte-identical to HEAD**; all existing gates unchanged; full pytest **442 passed / 3 skipped / 1 warning in 114.35s**, exit 0.
-- **Delivery (R5):** this report is written; scoped commit and push are the remaining step — see the placeholder in §12.
+- **Delivery (R5):** this report, both scoped commits, and the push are **DONE** — commits `65c523c20cd2cded8822b739fc0f3cb25bf70179` (frontend) and `5b1590af92c375e9803045942b9638236b828361` (docs) are pushed to `origin/integration/legalx-v1`; remote SHA verified = local HEAD `5b1590af92c375e9803045942b9638236b828361` (see §12).
 
 Hard constraints HC-1..HC-7 were honored: no branch switch, force-push, reset, clean, or `main` merge; UI-agent work and the live servers on ports 8010 (PID 23840) and 3002 (PID 36736) were **preserved, not killed**; `App.tsx` was re-hashed before every edit; the 2-field payload `{dispute_behavior, governing_law}` with strict schema `extra=forbid` was kept; no DB, migration, or secret changes; no fabricated results.
 
@@ -65,8 +65,8 @@ Spec: `docs/PHASE7_CLOSEOUT_FRS.md` (DRAFT), requirements R1–R5. Statuses cite
 | R4.4 | Security gates unchanged | RBAC/org-404/CSRF/`extra=forbid`/409/evidence-only passport/gate blocks all unchanged; execution gate still 403 (§7) | **Passed** |
 | R4.5 | Integrity after verification | App.tsx SHA start==end `B3C8653A…85A8`; HEAD `22dbf21`; protected backend byte-identical; staged area empty; only own :8011/:3005 servers stopped (8010/3002 still listening) | **Passed** |
 | R5.1 | Documentation deliverable | This report | **Passed** (documentation produced) |
-| R5.2 | Scoped commit + push + remote SHA | Intended push target `origin/integration/legalx-v1` (LEXORA-LegalX.git), non-force; legacy LegalX-pro push disabled | **Blocked** — not yet performed at time of writing; placeholder in §12 |
-| R5.3 | Verify remote SHA after push | Depends on R5.2 | **Blocked** — pending push |
+| R5.2 | Scoped commit + push + remote SHA | Commits `65c523c20cd2cded8822b739fc0f3cb25bf70179` (frontend) and `5b1590af92c375e9803045942b9638236b828361` (docs) pushed to `origin/integration/legalx-v1` (LEXORA-LegalX.git), non-force; legacy LegalX-pro push disabled | **Passed** |
+| R5.3 | Verify remote SHA after push | `git ls-remote` remote SHA = `5b1590af92c375e9803045942b9638236b828361` = local HEAD (exact match); no divergence | **Passed** |
 
 ### Appearance criteria (split out per instruction; all backed by M3)
 
@@ -190,7 +190,7 @@ All results below are recorded evidence; this report's author did not independen
 - **Rehearsal hardcoded path** — `/home/ubuntu/legalx/docs/rehearsals` (Windows → `C:\home\ubuntu\...`); portability limitation, no repo file changed.
 - **E2E 10/0/0 is developer-reported**, though corroborated by `.last-run.json`; this report's author did not re-run it.
 - **No WCAG conformance** and no native accessibility tooling (axe/Lighthouse); keyboard evidence is heuristic and contrast partial (§9). No CLS/INP/LCP metrics.
-- **QA gate premature FAIL being re-run** — see §Sign-off. The earlier gate (`ses_e011e5a72ffeafuiX4nxlPGmaW`) was dispatched **before** M3/rehearsal/report/commit and returned FAIL for **incompleteness, not fabrication**; it confirmed the core implementation criteria PASS. The items it flagged as unmet at that time (R3.2/R3.3/F-3 rendered UI + rehearsal, F-4 UI evidence) are **NOW COMPLETE via M3**; R5.1 (report) is now satisfied by this document, and R5.2/R5.3 (commit + push + remote SHA) remain pending (§12). The gate will be **re-run after this report + commit + push**.
+- **QA gate premature FAIL — re-run returned PASS WITH MINOR FINDINGS** — see §Sign-off. The earlier gate (`ses_e011e5a72ffeafuiX4nxlPGmaW`) was dispatched **before** M3/rehearsal/report/commit and returned FAIL for **incompleteness, not fabrication**; it confirmed the core implementation criteria PASS. The items it flagged as unmet at that time (R3.2/R3.3/F-3 rendered UI + rehearsal, F-4 UI evidence) are **NOW COMPLETE via M3**; R5.1 (report), R5.2/R5.3 (both commits + push + remote SHA verification) are all **COMPLETE** (§12). The QA gate re-run has since returned **PASS WITH MINOR FINDINGS** (MF-1, corrected here). Formal sign-off remains Pending per owner decision.
 
 ## 12. Git delivery — scoped commit, push, and remote verification
 
@@ -203,7 +203,7 @@ All results below are recorded evidence; this report's author did not independen
 - **Excluded (deliberately unstaged, preserved in working tree):** backend bug-fix files `api/app/intelligence/extractor.py`, `api/app/routers/activity.py`, `api/requirements.txt`, `api/tests/test_activity.py` (Phase 4/5 work; backend already delivered at `22dbf21`). No DB, secret, `.env`, binary, or generated artifact staged (safety scans clean).
 - **Verification on the committed tree:** `tsc` exit 0; `npm run build` exit 0 (Vite 8.3.6; `index-B6Q4ziVK.js` 479.17 kB + `Sculpture-CUOBJndu.js` 539.45 kB; pre-existing >500 kB advisory, NO new advisory). Pre-commit full evidence: pytest 442 passed / 3 skipped / 1 warning in 114.35s, `npm test` 9/9, parity E2E 10 passed / 0 failed / 0 skipped in 55.4s, rehearsals judge 30/30 pages 5/5 roles + demo 3/3, rendered-UI evidence gate PASS.
 - **Push:** `git fetch origin` then fast-forward check (remote `22dbf21`, merge-base `22dbf21`) → `git push origin HEAD:integration/legalx-v1` exit 0 (`22dbf21..65c523c`).
-- **Remote verification:** `git ls-remote` remote SHA = `65c523c20cd2cded8822b739fc0f3cb25bf70179` = local HEAD (EXACT MATCH); `git status -sb` = `## integration/legalx-v1...origin/integration/legalx-v1` with no divergence.
+- **Remote verification:** `git ls-remote` remote SHA = `5b1590af92c375e9803045942b9638236b828361` = local HEAD (EXACT MATCH); `git status -sb` = `## integration/legalx-v1...origin/integration/legalx-v1` with no divergence. (Commit `65c523c20cd2cded8822b739fc0f3cb25bf70179` was the first/frontend delivery commit; `5b1590af92c375e9803045942b9638236b828361` is the follow-up doc commit and is the current HEAD.)
 - **GitHub branch URL:** https://github.com/the-nidhi-bhat/LEXORA-LegalX/tree/integration/legalx-v1
 - Ports 8010 (PID 23840) and 3002 (PID 36736) remained listening throughout (concurrent UI-agent services, untouched).
 
