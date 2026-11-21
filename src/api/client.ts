@@ -38,7 +38,11 @@ async function parseEnvelope<T>(res: Response): Promise<ApiEnvelope<T>> {
   const contentType = res.headers.get('content-type') || ''
   let body: any = null
   if (contentType.includes('application/json')) {
-    try { body = await res.json() } catch { body = null }
+    try { body = await res.json() } catch {
+      if (res.ok && res.status !== 204 && res.status !== 205) {
+        return toErrorEnvelope('INVALID_RESPONSE', 'Response contained invalid JSON')
+      }
+    }
   } else {
     try { body = await res.text() } catch { body = null }
   }

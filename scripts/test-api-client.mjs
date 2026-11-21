@@ -47,4 +47,8 @@ globalThis.fetch = async url => {
 }
 await api.apiClient.get('/agreements?sort=name&page=1#results', { query: { page: 2, q: 'two words' } })
 assert.equal(requestedUrl, '/api/v1/agreements?sort=name&page=2&q=two+words#results')
+globalThis.fetch = async () => new Response('{', { headers: { 'Content-Type': 'application/json' } })
+const malformed = await api.apiClient.get('/agreements')
+assert.equal(malformed.ok, false)
+assert.equal(malformed.error.code, 'INVALID_RESPONSE')
 console.log('api client tests passed')
