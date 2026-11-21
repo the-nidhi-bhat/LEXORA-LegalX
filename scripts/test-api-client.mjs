@@ -29,4 +29,15 @@ const errorEnv = await api.apiRequest('/auth/session', { method: 'POST', json: {
 assert.equal(errorEnv.ok, false, 'backend error envelope maps to an error envelope')
 assert.equal(errorEnv.error.code, 'UNAUTHORIZED', 'backend error code is preserved')
 assert.equal(errorEnv.requestId, 'req-regression-401', 'nested error.request_id is surfaced as requestId')
+for (const headers of [new Headers({ 'X-Trace': '123' }), [['X-Trace', '123']]]) {
+  let received
+  globalThis.fetch = async (_url, init) => {
+    received = new Headers(init.headers)
+    return Response.json({})
+  }
+  await api.apiClient.post('/example', {}, { headers, csrfToken: 'example-token' })
+  assert.equal(received.get('x-trace'), '123')
+  assert.equal(received.get('content-type'), 'application/json')
+  assert.equal(received.get('x-csrf-token'), 'example-token')
+}
 console.log('api client tests passed')

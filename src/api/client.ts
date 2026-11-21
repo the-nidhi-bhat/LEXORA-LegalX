@@ -59,15 +59,14 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeoutMs)
     try {
+      const requestHeaders = new Headers(headers)
+      if (json !== undefined && !requestHeaders.has('Content-Type')) requestHeaders.set('Content-Type', 'application/json')
+      if (csrfToken && !requestHeaders.has('X-CSRF-Token')) requestHeaders.set('X-CSRF-Token', csrfToken)
       const res = await fetch(buildUrl(path, query), {
         credentials: init.credentials ?? 'include',
         ...init,
         method,
-        headers: {
-          ...(json !== undefined ? { 'Content-Type': 'application/json' } : {}),
-          ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
-          ...(headers || {}),
-        },
+        headers: requestHeaders,
         body: json !== undefined ? JSON.stringify(json) : (init as any).body,
         signal: controller.signal,
       })
