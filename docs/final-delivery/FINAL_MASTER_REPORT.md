@@ -63,7 +63,7 @@ Each report carries **exactly one** overall verdict. `VERIFIED` / `SIMULATED` / 
 
 ## Hackathon readiness — honest answer
 
-**Demo: ready (M5-verified). Submission package: not ready.** The ₹30k/₹35k/₹5k golden path is deterministic and rehearsed (M5 rehearse:judge PASS 30/30 pages and 5/5 roles in 53.747 s; demo 3/3 personas — Phase 7 closeout evidence). What is missing: a jury PDF (none exists), a live preview URL (no deploy), license/media clearance, R7 Git delivery, and formal sign-off. Do not present this as production-ready or as legally enforceable.
+**Demo: ready (M5-verified). Submission package: not ready.** The ₹30k/₹35k/₹5k golden path is deterministic and rehearsed (M5 rehearse:judge PASS 30/30 pages and 5/5 roles in 53.747 s; demo 3/3 personas — Phase 7 closeout evidence). What is missing: a jury PDF (none exists), a live preview URL (no deploy), license/media clearance, and formal sign-off. R7 Git delivery is DONE — PR #2 was merged into `main` at `629a07c` (see 2026-11-22 addendum below). Do not present this as production-ready or as legally enforceable.
 
 ## Notes on report filenames
 
@@ -78,3 +78,41 @@ The dispatch brief for this workstream listed a different set — `PHASE_08_DEPL
 5. Documentation rewrites installed to their tracked paths in M4 and links re-validated — COMPLETE (not pending). The `docs/final-delivery/_rewrite/` copies are provenance-only and excluded from commit.
 
 Related: [FRS](../OMEGA_FRS.md), [STATE](../STATE.md), [licensing review](../LICENSING_REVIEW.md), [media provenance](../MEDIA_PROVENANCE.md).
+
+---
+
+## Addendum 2026-11-22 — PR #2 merged, README redesigned, Phase 11 config work (live deploy still BLOCKED)
+
+This addendum supersedes stale SHA/status notes above. It records verified work; it does **not** claim a hosted deployment.
+
+### Git delivery — COMPLETE
+
+- Owner approved PR #2 merge subject to head `838ad0c8851e79d5b4ab6b9e977dad2e03a5ffb3` + green checks + mergeable; all three re-verified.
+- PR #2 (`integration/legalx-v1` → `main`, https://github.com/the-nidhi-bhat/LEXORA-LegalX/pull/2) merged with `--merge`. **Merge commit `629a07c1adbee7a12c1f424d76ed9b61b4a2b9d6`**; remote `main` verified to equal it; no force-push.
+- Earlier master-report references to `2565807` as the final/only delivery SHA are superseded: the branch advanced `2565807` → `2b83025` → `e30598f` (Vercel Services names) → `838ad0c` (backend bugfixes incl. resolving requirements conflict markers) → merged to `main` at `629a07c`. Chain verified. R7 = DONE.
+
+### README redesign — COMPLETE (this addendum)
+
+- Fully rebuilt 28-section GitHub-native README (438 installed lines) with premium structure, 5 valid Mermaid diagrams, honest feature classification (VERIFIED / SIMULATED / DEFERRED), real 15-route API surface, env var **names** only, MIT-as-proposal status, and no fake badges/URLs/on-chain claims.
+- 10 fresh screenshots in `docs/screenshots/current/` captured by real Playwright Chromium from an isolated frontend (:3005) + backend (:8011, disposable DB). `EVIDENCE.md` gives an honest LIVE-BACKEND vs DEMO-SIMULATED label per image.
+- Honesty note: the parity screenshot shows an authentic backend **BLOCKED** result on `dispute_behavior`; the ₹30k/₹35k/₹5k example is the public homepage illustration, not a live verification output, and is not constructible through the bounded two-field HTTP schema (server derives all amounts). No verification result was fabricated.
+- All 39 relative asset/link paths resolve; 5 Mermaid blocks structurally valid (mmdc not installed, so pixel rendering unverified).
+
+### Phase 11 deployment work — COMPLETE WITH LIMITATIONS (live deploy BLOCKED)
+
+- Vercel project `lexora-legalx` created + linked under the correct account; the forbidden `legalx` project was not touched.
+- `vercel.json` validated against the official `openapi.vercel.sh` schema — services key, rewrites, service names, and FastAPI entrypoint all valid; one documented deviation (backend root `.` to preserve ~140 absolute `api.app` imports). See `docs/VERCEL_CONFIG_VALIDATION.md` and the PHASE_11 addendum.
+- `vercel pull` exit 0; `vercel build` recognized both Services and ran npm install (0 vulns) but hit a Windows CLI `spawn cmd.exe ENOENT` defect — a local tooling limitation, not a config error. Cloud preview build remains the authoritative validation and is still pending.
+- **BLOCKED (owner-only):** create a Neon free-tier Postgres (owner chose Neon free), set `DATABASE_URL` in the `lexora-legalx` **Preview** env themselves (never in chat), then authorize the preview deploy + single Alembic migration + full hosted workflow smoke. Production promotion needs separate approval.
+
+### Verdict summary
+
+| Area | Status |
+|---|---|
+| Engineering / tests / QA / reviewer | COMPLETE (8/8 verification) |
+| PR #2 → main merge | COMPLETE (`629a07c`) |
+| README redesign + fresh screenshots | COMPLETE (this addendum) |
+| Phase 11 config/project work | COMPLETE WITH LIMITATIONS (Windows local build defect; cloud validation pending) |
+| Live full-stack preview deploy + DB migration + hosted tests | BLOCKED (owner DATABASE_URL + preview authorization) |
+| Production release | BLOCKED (needs explicit owner approval) |
+| Licensing / media rights | BLOCKED (consent + provenance unresolved) |

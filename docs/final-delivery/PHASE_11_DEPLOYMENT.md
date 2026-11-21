@@ -47,3 +47,34 @@ Local scaffolding exists — `vercel.json` was created by concurrent M2 work and
 4. Confirm no production DB mutation or seeding occurred.
 
 Related: [deployment guide](../DEPLOYMENT.md), [security](../SECURITY.md), [master report](FINAL_MASTER_REPORT.md).
+
+---
+
+## Update 2026-11-22 — PR merge + Vercel project/config work (live deploy still BLOCKED)
+
+This addendum records verified actions taken after the original report above. It does **not** change the overall verdict: live full-stack deployment remains **BLOCKED** pending the owner-provided `DATABASE_URL`. Nothing here claims a hosted deployment.
+
+### Verified actions
+
+| Action | Evidence | Result |
+|---|---|---|
+| PR #2 merged into `main` | `gh pr merge 2 --merge`, merge commit `629a07c1adbee7a12c1f424d76ed9b61b4a2b9d6`; remote `main` ls-remote = same SHA | PASS (no force-push) |
+| Correct Vercel project created + linked | `vercel project create lexora-legalx` → `prj_s7ofWrePH1qlRrJpnFjCj6Tp7WBn`; `vercel link --project lexora-legalx --yes` → exit 0; `.vercel/project.json` (gitignored) | PASS. The FORBIDDEN `legalx` project (Next.js, `legalx-three.vercel.app`) was NOT touched. |
+| `vercel.json` validated against official schema | Fetched `https://openapi.vercel.sh/vercel.json`; confirmed `services` is a valid top-level key, `{ "service": name }` rewrites valid (`type` optional), service names `app`/`api` valid, `framework: fastapi` valid, no unsupported top-level build keys | Structurally SCHEMA-VALID; recorded in `docs/VERCEL_CONFIG_VALIDATION.md` |
+| `vercel pull --environment preview` | exit 0, downloaded project settings + preview env | PASS |
+| `vercel build --environment preview` | CLI recognized BOTH Services (`app` Vite + `api` FastAPI), ran `[vc:service:app] npm install` (0 vulnerabilities), then failed with `spawn cmd.exe ENOENT` | Windows Vercel-CLI defect in the local build-command phase (reproduced via a short path junction, so not path length and not config). Local build cannot fully validate on Windows; the **cloud preview build is the authoritative validation**, still pending. |
+| Env var confidentiality | `.env.local` created by `vercel link` is gitignored; no env files in git status; `DATABASE_URL` never handled in chat | PASS |
+
+### Documented configuration deviation
+
+Backend service root is `.` (not `api` as the owner's shorthand stated) because `api/app/main.py` uses ~140 absolute `from api.app...` imports; setting root `api` would break them. The service is still named `api` and reaches `/api` via rewrite. Service names match the owner's `app`/`api` requirement.
+
+### Still BLOCKED (owner-only, unchanged)
+
+1. Create a **Neon free-tier** PostgreSQL database (owner authorized Neon free tier on 2026-11-22).
+2. Owner sets `DATABASE_URL` in the `lexora-legalx` **Preview** environment themselves — never in chat or docs.
+3. Authorized cloud preview deploy → `GET /api/health` + SPA/full-workflow smoke; apply `alembic upgrade head` once against the preview DB.
+4. Production promotion requires separate explicit owner approval.
+5. Licensing consent and film/noir media provenance remain unresolved; assets stay unpublished.
+
+No live URL, deployment ID, migration, or runtime test result can be reported until items 1–4 are complete. This report will be updated again after the authorized preview deploy.
