@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 34">
+  <!-- Derived from the project's own Logo() mark in src/App.tsx (original LEGALX branding). -->
+  <rect width="34" height="34" rx="6" fill="#101820"/>
+  <path d="M3 29 17 4l14 25H3Zm6 0 8-14 8 14M7 22h20M17 4v11" fill="none" stroke="#f5f1e8" stroke-width="1.65" stroke-linejoin="round"/>
+</svg>
