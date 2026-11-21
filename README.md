@@ -2,66 +2,243 @@
 
 ### From human agreements to executable trust.
 
-LEGALX is Lexora’s startup-grade legal-tech prototype for turning ordinary English or Hinglish deal descriptions into structured contract intelligence, readable agreement output, and a parity check against supported escrow behavior.
+> **Honesty boundary.** LEGALX verifies *consistency between representations*. It does not guarantee legal correctness, enforceability, or liability outcomes. Where authentication, AI, storage, wallet, or blockchain services are not actually connected, the interface says so explicitly. See the [feature matrix](#verified--simulated--deferred) and the [final delivery report](docs/final-delivery/FINAL_MASTER_REPORT.md).
 
-> **Important boundary:** LEGALX verifies consistency between representations. It does not guarantee legal correctness, enforceability, or liability outcomes. The current public build labels authentication, AI, storage, wallet, and blockchain as prototype/simulation states where those services are not connected.
+---
 
-## What is implemented
+## The problem: a five-thousand-rupee disagreement
 
-- Dark-only cinematic public website with responsive navigation, product story, use cases, security language, pricing prototype plans, FAQ, contact, privacy, and terms surfaces.
-- Guest demo entry at `/demo` without an account or wallet.
-- Local demo sign-up, sign-in, onboarding, profile, settings, toasts, breadcrumbs, responsive sidebar, notifications, help center, team workspace, and audit activity.
-- Agreement management, guided AI workspace, deterministic seeded extraction, source-grounded clauses, Contract IR structured/JSON views, readable legal agreement preview, version/integrity evidence, and milestone tracking.
-- Parity Verification Studio with matching and tampered states. Changing the supported review window from 5 days to 2 days reduces the score to 74 and blocks the execution path; restoring it returns the demo to 100.
-- Smart-contract workspace with visibly simulated Sepolia records, no fabricated transaction submission, no private-key handling, and clear next-step guardrails.
-- Responsive layout for desktop, tablet, and mobile breakpoints; reduced-motion CSS fallback; optimized generated visual assets in the public hero/trust story.
+A freelancer and a client agree on **₹30,000**, payable as **3 × ₹10,000** milestones. The contract that gets signed encodes a total of **₹35,000**. Both documents read like the same deal, but the money does not reconcile:
+
+| Representation | Value |
+| --- | --- |
+| Agreed deal (public story) | ₹30,000 |
+| Milestone schedule | 3 × ₹10,000 = ₹30,000 |
+| Encoded agreement total | ₹35,000 |
+| **Mismatch** | **₹5,000** |
+
+The canonical demo data for this story lives in `src/components/ContractStory.tsx:5–9`. It is deliberately distinct from the ₹50,000 website-agreement constant used in the in-app workflow; the two were not conflated.
+
+## The solution
+
+LEGALX turns a plain-language deal into a structured, hash-bound representation, then checks whether the agreement text and the supported execution parameters still say the same thing. A critical mismatch **blocks** the execution path; a clean match is still subject to an approval gate, an organization-scoped authorization check, and a human decision. Trust evidence (hashes, versions, engine version, status) is re-derived server-side — it is technical evidence, not legal advice and not an on-chain fact.
+
+The boundary is deliberate: parity and hashing prove *consistency*, never *enforceability*.
+
+---
+
+## Product film
+
+The repository contains a real product film and its assets. The media is untracked and its licensing is **UNVERIFIED** — see [media provenance](docs/MEDIA_PROVENANCE.md). Nothing here is screen-recorded proof of a live deployment or a real blockchain transaction.
+
+[Watch the LEGALX product film (MP4)](public/film/legalx.mp4) · [Poster image](public/film/poster.jpg) · [Captions (`legalx.vtt`)](public/film/legalx.vtt) · [English captions (`legalx.en.vtt`)](public/film/legalx.en.vtt)
+
+<video controls preload="metadata" width="720">
+  <source src="public/film/legalx.mp4" type="video/mp4" />
+  <track kind="captions" src="public/film/legalx.vtt" srclang="en" label="English" />
+  <track kind="captions" src="public/film/legalx.en.vtt" srclang="en" label="English (dedicated)" />
+  Your browser does not support HTML video. Use the direct MP4 link above.
+</video>
+
+---
+
+## VERIFIED / SIMULATED / DEFERRED
+
+**VERIFIED** = implemented in code with recorded verification evidence. **SIMULATED** = clearly labelled deterministic demo fixture, not a live external service. **DEFERRED** = not implemented in this scope. Evidence below reflects authoritative **M5 verification** (see `docs/final-delivery/PHASE_10_TESTING.md`); checks were executed with captured output in M5.
+
+| Capability | Status | Basis / boundary |
+| --- | --- | --- |
+| Public marketing site, responsive layout, light/dark theme, reduced motion | **VERIFIED** | Vite/React SPA; light is the default (`index.html`, `src/main.tsx`); rendering evidence in `docs/PHASE7_CLOSEOUT_REPORT.md` §9 |
+| Guest demo at `/demo` and canonical golden path | **VERIFIED** | M5 rehearse:judge PASS 30/30 pages, 5/5 roles in 53.747 s; demo 3/3 personas |
+| Three.js hero sculpture | **VERIFIED** | `src/components/Sculpture.tsx` imports `three`; bundled as its own chunk at build |
+| Session sign-in/out, `lx_session` cookie, CSRF header, server-computed permissions | **VERIFIED** | `api/app/routers/auth.py`; `docs/RBAC.md`; negative tests in `scripts/test-rbac.mjs` |
+| Role-aware workspaces (5 roles), protected routes, 403 states | **VERIFIED** (UI) | Local role switcher is a **demo-only** control; production identity binding is not implemented |
+| Agreement create/list/get/patch, versions, approvals, milestones, activity | **VERIFIED** | 15 real HTTP routes; `docs/API.md`; M5 pytest 447 passed / 3 skipped / 1 warning |
+| Canonical hashing, version integrity, append-only verification runs | **VERIFIED** | `api/app/parity/`, `api/app/models/verification.py`; legal-gate files byte-identical at M5 (engine.py `85E4D3EE…ACC2`, comparison_rules.py `C0FDBF4A…DE434`, schemas/parity.py `DCFE9E1E…98B525`) |
+| Parity verification HTTP surface + evidence-only Trust Passport | **VERIFIED** | `POST .../verify`, `GET .../trust-passport`; strict 2-field payload `{dispute_behavior, governing_law}` with `extra="forbid"`; M5 parity E2E 10 passed / 0 failed / 0 skipped in 1.7m |
+| Execution gate (approvals, party, state, idempotency, 409/403/429) | **VERIFIED** | `api/app/routers/execution.py`; conditional `UPDATE` for concurrency; E2E confirms the gate still returns 403 |
+| Deterministic AI / seeded extraction and source-grounded clauses | **SIMULATED** | Fixture-based; no Gemini provider is connected and no AI-extraction HTTP route exists |
+| Tamper demo (review window 5 → 2 days; score 74; execution blocked; restore → 100) | **SIMULATED** | Deterministic demo fixture. The live path derives its result from the backend and never hardcodes a score |
+| Smart-contract / Sepolia workspace, milestones and transactions | **SIMULATED** | UI records only; no transaction submission, no private-key handling, no on-chain scope |
+| Supabase Auth / Database / Storage, server-side Gemini validation | **DEFERRED** | `docs/PRODUCT_ROADMAP.md` "Next" / "Later" |
+| Wallet lifecycle, on-chain event indexing, real escrow | **DEFERRED** | Out of scope by owner decision and repo truth (`docs/DECISIONS.md`, `docs/STATE.md`) |
+| Production Contract IR package / private document upload / Trust Passport export | **DEFERRED** | UI schema representation today; production integration pending |
+| Live Vercel deployment with persistent Postgres | **DEFERRED / BLOCKED** | Scaffolding only; no live deploy; live DB deploy blocked pending an owner-provided `DATABASE_URL` |
+| MIT license assertion | **DEFERRED / BLOCKED** | Proposal only; no active license asserted. See [licensing review](docs/LICENSING_REVIEW.md) |
+
+> The per-instance in-memory rate limiter is a known, owner-accepted limitation: it is not shared across processes. See [security](docs/SECURITY.md) and `docs/OMEGA_FRS.md` §8d.
+
+---
 
 ## Judge walkthrough
 
 1. Open `/demo` or choose **Explore live demo** from the landing page.
-2. Choose **AI Workspace** and review the seeded ₹50,000 website agreement.
-3. Open **Contract IR** to inspect the structured source of truth and JSON representation.
-4. Open **Parity Verification**, choose **Simulate tamper**, and observe the exact blocking mismatch.
-5. Choose **Restore matching logic**, then visit Smart Contracts, Milestones, Transactions, and Activity.
-6. Open the Website project agreement detail for the lifecycle, document preview, version, and integrity hash evidence.
+2. Choose **AI Workspace** and review the seeded agreement; note the deterministic (simulated) extraction.
+3. Open **Contract IR** to inspect the structured source of truth and its JSON representation.
+4. Open **Parity Verification**, choose **Simulate tamper**, and observe the blocking mismatch.
+5. Choose **Restore matching logic**, then visit Smart Contracts, Milestones, Transactions, and Activity. Smart-contract records are visibly simulated.
+6. Open the project agreement detail for the lifecycle, document preview, version, and integrity-hash evidence.
 
-## Local development
+Full script: [demo guide](docs/DEMO_GUIDE.md). Machine-readable record: [latest rehearsal](docs/rehearsals/latest.json).
+
+---
+
+## Architecture
+
+```mermaid
+flowchart LR
+    U[Visitor or signed-in member] --> W[Vite + React + TypeScript SPA]
+    W --> C[src/api/client.ts]
+    C -->|same-origin /api/v1| A[FastAPI app factory in api/app/main.py]
+    A --> M[RequestContextMiddleware and one error envelope]
+    M --> R[Seven routers: health auth agreements versions activity execution parity]
+    R --> S[Services: parity engine, canonical hashing, RBAC, sessions]
+    S --> D[(PostgreSQL via SQLAlchemy)]
+    W --> T[three.js hero in src/components/Sculpture.tsx]
+    W --> F[Product film in public/film]
+```
+
+Client-supplied roles, user IDs, and workspace IDs are never trusted; every protected route re-checks authentication and authorization. See [architecture](docs/ARCHITECTURE.md) and [API and validation](docs/API.md).
+
+### Agreement workflow
+
+```mermaid
+flowchart TD
+    D[Deal description in English or Hinglish] --> A[Create agreement draft via POST agreements]
+    A --> V[Version 1 with canonical SHA-256]
+    V --> P[Parties and milestones]
+    P --> AP[Per-party approval of the exact version hash]
+    AP --> VER[Run parity verification against the approved version]
+    VER -->|critical mismatch| B[Execution blocked, no status change]
+    VER -->|supported terms align| E[Execution gate checks]
+    E -->|allowed| X[Agreement becomes active with activity evidence]
+```
+
+### Contract IR flow
+
+```mermaid
+flowchart LR
+    N[Natural-language deal terms] --> E[Extraction path]
+    E --> IR[Canonical Contract IR structure]
+    IR --> H[Canonical SHA-256 and canonical length]
+    IR --> DOC[Readable legal agreement preview]
+    IR --> EP[Supported execution parameters]
+    DOC --> C[Parity verification]
+    EP --> C
+    H --> C
+    C --> PP[Evidence-only Trust Passport]
+    IR -. future work .-> X[Production IR package is deferred]
+```
+
+The extraction path is a deterministic fixture today; there is no AI-extraction HTTP endpoint. The Trust Passport is re-derived server-side and is not a client-trusted source.
+
+### Execution gate
+
+```mermaid
+flowchart TD
+    Q[POST execution endpoint] --> L{Per-instance rate limiter}
+    L -->|denied| R429[429 RATE_LIMITED with Retry-After]
+    L -->|allowed| O{Org-scoped agreement found}
+    O -->|no| NF[404]
+    O -->|yes| AP{Approvals on current version}
+    AP -->|missing or stale| F403[403 Execution blocked]
+    AP -->|present| PT{Approved party}
+    PT -->|no| F403
+    PT -->|yes| ST{Status is draft}
+    ST -->|no| F403
+    ST -->|yes| U[Conditional UPDATE draft to active]
+    U -->|zero rows| F403
+    U -->|one row| OK[executed plus activity event]
+```
+
+The gate is a technical control, not a legal one. Legal-gate files were byte-identical at Phase 7 closeout; see `docs/PHASE7_CLOSEOUT_REPORT.md` §7.
+
+### Database schema
+
+```mermaid
+erDiagram
+    ORGANIZATION ||--o{ MEMBERSHIP : has
+    USER ||--o{ MEMBERSHIP : joins
+    ORGANIZATION ||--o{ AGREEMENT : owns
+    AGREEMENT ||--o{ AGREEMENT_VERSION : has
+    AGREEMENT ||--o{ AGREEMENT_PARTY : has
+    AGREEMENT ||--o{ MILESTONE : has
+    AGREEMENT_VERSION ||--o{ VERSION_APPROVAL : receives
+    AGREEMENT ||--o{ ACTIVITY_EVENT : logs
+    USER ||--o{ SESSION_ROW : opens
+    AGREEMENT ||--o{ IDEMPOTENCY_KEY : keys
+    AGREEMENT_VERSION ||--o{ IR_DOCUMENT : derives
+    AGREEMENT_VERSION ||--o{ EXECUTION_PARAMETERS : parameterizes
+    AGREEMENT_VERSION ||--o{ PARITY_RUN : compared_by
+    VERIFICATION_RUN ||--o| PARITY_RUN : references
+```
+
+Entity names follow `api/app/models/`. Verification runs are append-only and organization-scoped. See [database and persistence](docs/DATABASE.md).
+
+### Demo golden path
+
+```mermaid
+flowchart LR
+    A[Landing page] --> B[Guest demo at /demo]
+    B --> C[AI workspace with seeded fixture]
+    C --> D[Contract IR structured and JSON views]
+    D --> E[Parity Verification Studio]
+    E -->|simulate tamper| F[Critical mismatch, execution blocked]
+    E -->|restore matching| G[Supported terms align]
+    F --> G
+    G --> H[Smart contracts and milestones, simulated]
+    H --> I[Activity and integrity evidence]
+```
+
+---
+
+## Getting started: verified commands
+
+The app is a Vite + React + TypeScript frontend plus a FastAPI Python backend. `public/manus-routes.json` declares every page route for the managed runtime. The default theme is **light**; dark is a persisted user preference toggled at runtime — the repository is **not dark-only** (`index.html:9–22`, `src/main.tsx:8–9`).
 
 ```bash
 npm install
 npm run dev
+npx tsc --noEmit
+npm test
+npm run test:e2e -- e2e/parity.spec.ts --config playwright.parity.config.ts
 npm run build
-npm run test
+npm run rehearse:judge
 ```
 
-The app is a Vite + React + TypeScript frontend. `public/manus-routes.json` declares every page route for the managed runtime.
+Backend (from the repository root, using the project virtual environment):
 
-## Architecture
+```bash
+.venv\Scripts\python.exe -m pytest api/tests -q --no-header
+```
 
-- `src/App.tsx` — typed UI primitives, route dispatcher, public pages, application shell, demo data, and product workflows.
-- `src/styles.css` — dark LEGALX design tokens, responsive layout, accessibility-friendly focusable controls, and mobile breakpoints.
-- `public/manus-routes.json` — route manifest used by managed Preview and publication.
-- `docs/` — setup, architecture, security, AI, blockchain, data, testing, operations, and demo documentation.
-- `scripts/test-demo.mjs` — deterministic parity behavior checks that run without external services.
+Authoritative M5 verification results (captured output; exit 0 each):
 
-## Environment and production integrations
-
-Copy `.env.example` only when wiring a real deployment. No secret is required for the guest demo. The documented production path expects Supabase Auth/Database/Storage, server-side Gemini, a Sepolia RPC provider, deployed escrow address/ABI, and a wallet client such as wagmi/viem. Those integrations are intentionally not claimed as active in the current static prototype.
-
-## Honest status
-
-| Area | Current status |
+| Check | M5 result |
 | --- | --- |
-| Public frontend | Implemented |
-| Guest demo | Implemented, deterministic |
-| Local auth/onboarding | Prototype only |
-| Gemini | Not connected; deterministic provider shown |
-| Supabase | Not connected; integration documented |
-| Contract IR | UI schema represented by seeded demo data; production schema integration pending |
-| Parity Engine | Deterministic demo engine behavior represented in UI; production engine integration pending |
-| Solidity/Sepolia | Simulation UI only; no transaction is claimed |
-| File storage | Not connected; production private-storage path documented |
-| Tests | Build, TypeScript, deterministic parity checks |
+| Backend pytest | 447 passed / 3 skipped / 1 warning in 91.04 s, exit 0 |
+| TypeScript (`npx tsc --noEmit -p tsconfig.json`) | exit 0 |
+| Frontend `npm test` | 9/9 chained scripts, exit 0 |
+| `npm run build` | exit 0; Vite v8.3.6, 40 modules, 1.47 s; `index-B6Q4ziVK.js` 479.17 kB + `Sculpture-CUOBJndu.js` 539.45 kB; >500 kB advisory pre-existing, not a regression |
+| Parity E2E (`npx playwright test --config playwright.parity.config.ts --workers=1`) | 10 passed / 0 failed / 0 skipped in 1.7m, exit 0 |
+| `npm run rehearse:judge` | PASS, pages=30/30, roles=5/5, 53.747 s, exit 0; `rehearse:demo` 3/3 personas |
+
+> R7 Git delivery remains **Pending**; formal QA sign-off remains Pending per owner decision (see `docs/final-delivery/FINAL_MASTER_REPORT.md`).
+
+### Stack
+
+- **Frontend:** Vite, React, TypeScript, React DOM (`package.json`).
+- **3D:** `three` (`^0.187.0`) with the hero sculpture in `src/components/Sculpture.tsx`.
+- **Styling:** modular CSS under `src/styles/` — `styles.css`, `theme.css`, `design.css`, `landing.css`, `astra-layout.css`, `controls.css`, `walkthrough.css` — imported from `src/main.tsx`. There is no top-level `src/styles.css`.
+- **Backend:** FastAPI, SQLAlchemy, Alembic; PostgreSQL in production mode, SQLite for local development.
+- **Testing:** Playwright, Node demo/RBAC/workflow scripts, pytest.
+- **Docs:** [setup](docs/SETUP.md), [operations](docs/OPERATIONS.md), [testing](docs/TESTING.md).
+
+### Environment and integrations
+
+Real deployment configuration uses environment **names only** — never commit values: `APP_ENV`, `DATABASE_URL`, `CORS_ORIGINS`, `DEMO_TAMPER_ENDPOINT`, `LOG_LEVEL`, `SESSION_TTL_HOURS`, `SESSION_ABSOLUTE_DAYS`, `FEATURE_AI_EXTRACTION`, `LOGIN_RATE_LIMIT_ATTEMPTS`, `LOGIN_RATE_LIMIT_WINDOW_SECONDS`, `GEMINI_API_KEY`, `LEGALX_GEMINI_MODEL`, and frontend `VITE_API_BASE_URL`. No secret is needed for the guest demo. None of those integrations is claimed as active. See [deployment](docs/DEPLOYMENT.md).
+
+---
 
 ## Documentation
 
@@ -85,12 +262,19 @@ Copy `.env.example` only when wiring a real deployment. No secret is required fo
 - [RBAC and workspace authorization](docs/RBAC.md)
 - [Final acceptance audit](docs/FINAL_ACCEPTANCE_AUDIT.md)
 - [Guided demo rehearsal record](docs/rehearsals/latest.json)
-
-## Licensing
-
-No license is asserted in this prototype repository. Confirm the intended licensing choice before adding one.
+- [Product requirements](docs/PRD.md)
+- [OMEGA functional requirements](docs/OMEGA_FRS.md)
+- [Decision records](docs/DECISIONS.md)
+- [Phase 7 closeout report](docs/PHASE7_CLOSEOUT_REPORT.md)
+- [Final delivery master report](docs/final-delivery/FINAL_MASTER_REPORT.md)
+- [Media provenance](docs/MEDIA_PROVENANCE.md)
+- [Licensing review](docs/LICENSING_REVIEW.md)
+- [Proposed LICENSE text](docs/proposed-LICENSE.md)
+- [Contributing](CONTRIBUTING.md)
 
 ## Visual proof
+
+Repository screenshots, not claims of a live deployment.
 
 ![LEGALX landing page](docs/screenshots/landing.png)
 
@@ -99,39 +283,6 @@ No license is asserted in this prototype repository. Confirm the intended licens
 ![LEGALX parity verification studio](docs/screenshots/parity-studio.png)
 
 ![LEGALX AI workspace](docs/screenshots/ai-workspace.png)
-
-## Trust-flow architecture
-
-```mermaid
-flowchart LR
-    A[Plain language agreement] --> B[AI clarification layer]
-    B --> C[Canonical Contract IR]
-    C --> D[Readable legal agreement]
-    C --> E[Supported escrow parameters]
-    D --> F[Parity Verification Studio]
-    E --> F
-    F -->|critical mismatch| G[Execution blocked]
-    F -->|all supported terms match| H[Human approval gate]
-    H --> I[Simulated / configured wallet action]
-    I --> J[Milestones and activity evidence]
-
-    subgraph Trust Passport
-      K[Agreement version]
-      L[Canonical hash]
-      M[IR version]
-      N[Engine version]
-      O[Approval evidence]
-      P[Transaction reference when real]
-    end
-    C -. evidence .-> K
-    C -. evidence .-> L
-    F -. evidence .-> M
-    F -. evidence .-> N
-    H -. evidence .-> O
-    I -. evidence .-> P
-```
-
-The diagram reflects the product boundary: parity and hashing create technical evidence, not legal enforceability.
 
 ### Interaction proof
 
@@ -143,13 +294,11 @@ The diagram reflects the product boundary: parity and hashing create technical e
 
 ![Mobile transaction view](docs/screenshots/transactions-mobile.png)
 
-
+---
 
 ## Role-aware workspaces and access control
 
-LEGALX now uses one unified application shell with five permission-aware identities: Agreement Owner, Freelancer / Contractor, Legal Reviewer, Organization Admin, and Technical Auditor. The active identity changes the dashboard metrics, sidebar navigation, permitted actions, financial visibility, and protected route behavior while keeping every role on the same seeded Acme Digital agreement lifecycle.
-
-The demo role switcher is intentionally local-only and clearly labeled. It is useful for judging the connected workflow, not a replacement for production authentication. Every protected route is checked through the centralized policy before its component mounts; unauthorized attempts show a 403-style state. API and database enforcement patterns are documented separately in [RBAC.md](docs/RBAC.md), with server helpers in `server/authorization.ts` and executable negative tests in `scripts/test-rbac.mjs`.
+LEGALX uses one application shell with five permission-aware identities: Agreement Owner, Freelancer / Contractor, Legal Reviewer, Organization Admin, and Technical Auditor. The active identity changes dashboard metrics, sidebar navigation, permitted actions, financial visibility, and protected-route behavior. The demo role switcher is local-only and labelled as such; it is for judging the connected workflow, not a substitute for production authentication. Every protected route is checked through a centralized policy before its component mounts; unauthorized attempts show a 403-style state. Server-side helpers are in `server/authorization.ts` and `api/app/rbac.py`, with negative tests in `scripts/test-rbac.mjs`. See [RBAC](docs/RBAC.md) and [API](docs/API.md).
 
 ### Role-aware access flow
 
@@ -157,18 +306,40 @@ The demo role switcher is intentionally local-only and clearly labeled. It is us
 flowchart TB
     U[Authenticated workspace member] --> W{Active workspace membership}
     W -->|Acme Digital| R{Active role}
-    R --> O[Agreement Owner\ncreate, fund, approve milestones]
-    R --> F[Freelancer / Contractor\nassigned work, evidence, permitted payments]
-    R --> L[Legal Reviewer\nclauses, comments, legal approval]
-    R --> A[Organization Admin\nmembers, roles, integrations, logs]
-    R --> T[Technical Auditor\nread-only IR, parity, hashes, chain evidence]
+    R --> O[Agreement Owner: create, fund, approve milestones]
+    R --> F[Freelancer or Contractor: assigned work and permitted payments]
+    R --> L[Legal Reviewer: clauses, comments, legal approval]
+    R --> A[Organization Admin: members, roles, integrations, logs]
+    R --> T[Technical Auditor: read-only IR, parity, hashes]
     O --> P[Central policy check]
     F --> P
     L --> P
     A --> P
     T --> P
-    P -->|allowed| D[Scoped data + permitted action]
-    P -->|denied| X[403 state\nno protected component mounted]
-    D --> S[Server/API permission check]
-    S --> Q[Database workspace predicate + RLS]
+    P -->|allowed| D[Scoped data and permitted action]
+    P -->|denied| X[403 state, no protected component mounted]
+    D --> S[Server and API permission check]
+    S --> Q[Database workspace predicate and RLS]
 ```
+
+---
+
+## Licensing and contributors
+
+**No license is asserted.** A proposed MIT text with placeholder holder/year is recorded in [proposed LICENSE](docs/proposed-LICENSE.md), with blockers in [licensing review](docs/LICENSING_REVIEW.md). Film and noir artwork provenance is UNVERIFIED; bundled fonts carry SIL OFL 1.1 notices with a required carve-out, preserved in `public/fonts/`. See [media provenance](docs/MEDIA_PROVENANCE.md).
+
+Contributions are governed by [CONTRIBUTING](CONTRIBUTING.md). No individual contributor names are asserted here; authorship is recorded in repository history.
+
+## Known limitations
+
+- No blockchain, MetaMask, wallet, or real escrow implementation; no transaction is claimed.
+- No live Gemini provider and no AI-extraction HTTP route; extraction is a deterministic fixture.
+- Trust Passport UI is read-only evidence, not a client-trusted source.
+- Frontend role switching is a local demo construct.
+- Pre-existing >500 kB bundle advisory; not remediated here.
+- Per-instance in-memory rate limiting is not distributed across processes (owner-accepted, documented).
+- No professional security audit, WCAG conformance claim, or legal enforceability claim is made.
+
+---
+
+Verify the agreement. Then execute.

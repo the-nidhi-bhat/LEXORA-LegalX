@@ -20,11 +20,13 @@ from sqlalchemy.orm import Session as DbSession
 
 from api.app.db import get_db
 from api.app.deps import SessionContext, require
+from api.app.errors import ApiError
 from api.app.parity.service import (
     build_trust_passport,
     resolve_target_version,
     run_verification,
 )
+from api.app.ratelimit import limiter
 from api.app.routers.agreements import _load_agreement
 from api.app.schemas.parity import ParityVerifyRequest
 
@@ -41,6 +43,20 @@ def verify_version(
     db: DbSession = Depends(get_db),
 ) -> Dict[str, Any]:
     """Verify the target version against server-derived execution parameters."""
+    # Rate limit per authenticated principal + agreement (reuses the shared
+    # in-memory limiter from api.app.ratelimit; same pattern as auth.py). Each
+    # verify call appends 3-4 DB rows, so every allowed attempt is recorded.
+    key = (ctx.user_id, agreement_id)
+    allowed, retry_after = limiter.check(key)
+    if not allowed:
+        raise ApiError(
+            429,
+            "RATE_LIMITED",
+            "Too many verification attempts. Please try again later.",
+            headers={"Retry-After": str(retry_after)},
+        )
+    limiter.record_failure(key)
+
     agreement = _load_agreement(db, agreement_id, ctx)
     target = resolve_target_version(db, agreement, version)
     return run_verification(

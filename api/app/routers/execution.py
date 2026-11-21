@@ -236,6 +236,9 @@ def attempt_execution(
             "Too many execution attempts. Please try again later.",
             headers={"Retry-After": str(retry_after)},
         )
+    # Record every attempt that passes the check so the threshold is actually
+    # reached; without this the 429 + Retry-After path above is unreachable.
+    limiter.record_failure(key)
 
     # Load agreement with workspace scoping
     agreement = _load_agreement(db, agreement_id, ctx.organization_id)
@@ -323,10 +326,13 @@ def attempt_execution(
         .values(status="active", updated_at=utcnow())
     )
     if result.rowcount == 0:
-        # Another request already transitioned it (concurrent execution) or it
-        # is no longer in draft state.
+        # The conditional UPDATE matched no row: the persisted status is no
+        # longer 'draft' (a concurrent execution or another status change won
+        # the race). The in-memory `agreement` is stale here — refreshed only
+        # below — so do NOT report its cached 'draft' value as the new state.
         raise ApiError.forbidden(
-            f"Execution blocked: agreement status changed to '{agreement.status}' concurrently."
+            "Execution blocked: agreement is no longer in 'draft' state "
+            "(concurrent execution or a status change). Refresh and retry."
         )
 
     # Sync the in-memory agreement with the row now stored in the database.
