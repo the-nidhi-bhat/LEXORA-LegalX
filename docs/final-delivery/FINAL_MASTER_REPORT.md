@@ -116,3 +116,74 @@ This addendum supersedes stale SHA/status notes above. It records verified work;
 | Live full-stack preview deploy + DB migration + hosted tests | BLOCKED (owner DATABASE_URL + preview authorization) |
 | Production release | BLOCKED (needs explicit owner approval) |
 | Licensing / media rights | BLOCKED (consent + provenance unresolved) |
+
+---
+
+## Addendum 2026-11-22 (deployment evidence, final) — Preview READY; full-stack NOT COMPLETE
+
+This addendum supersedes the earlier "live deploy BLOCKED / no live URL" notes above. Those were true when written; a real, authorized **Preview** deployment has since succeeded. It records verified evidence only and does **not** claim hosted end-to-end E2E has passed.
+
+### Deployment — VERIFIED (Preview only, no `--prod`)
+
+| Item | Verified value |
+|---|---|
+| Vercel project | `lexora-legalx` (the forbidden `legalx` project was **NOT** used) |
+| Deployment ID | `dpl_9MTe9FaxsdwTqBGx89kQeqZGTAqz` |
+| URL | https://lexora-legalx-jdfumza5y-thenidhibhat-6721s-projects.vercel.app |
+| readyState | `READY` |
+| Target | Preview (`vercel deploy` **without** `--prod`) |
+| Source branch | `release/readme-refresh` |
+| Cloud build | Succeeded — the earlier local `spawn cmd.exe ENOENT` defect did **NOT** recur in the cloud |
+
+**Deployment Protection:** Vercel `vercel_authentication` is **ENABLED**. Raw, unauthenticated HTTP returns a Vercel auth-wall HTML page that is **NOT our app** (its `data-dpl-id` differs). All hosted probes below used `vercel curl <url> --yes` to bypass the wall; these are the app's real responses.
+
+**Deploy #1 failed:** 275 MB bundle exceeded Vercel's 225 MB limit (qa-screenshots bundled). Fixed by a NEW, deliberately **untracked** `.vercelignore` excluding `.venv`, `node_modules`, `qa-screenshots`, `test-results`, `public/film`, `public/noir`, `.git`, `.vercel`, `.env*`, `*.db`. Film/noir are excluded because media **RIGHTS ARE UNRESOLVED** — keep unpublished.
+
+### Hosted API smoke (via `vercel curl ... --yes`) — VERIFIED
+
+`GET /api/health` → `{"status":"ok","version":"unknown","db":"ok"}` (`version:unknown` expected — no git metadata at runtime; `db:ok` confirms PostgreSQL + psycopg 3.3.9). `GET /api/openapi.json` 200 · `GET /manus-routes.json` 200 · `GET /app/parity` 200 · `GET /` 200. Content-type verified on `/` (SPA `text/html`) vs `/manus-routes.json` (JSON). Health/route smoke passed; **full workflow E2E did not run / did not pass.**
+
+### Migration — VERIFIED (owner-executed)
+
+Alembic revision `e25c7211a088` confirmed by the owner in the Neon SQL Editor (project `lexora-legalx` / `production` branch / `neondb` / Singapore). Schema = 15 domain tables + `alembic_version`, created once via reviewed transactional SQL; **NOT rerun**. No agent performed DB mutation.
+
+### CURRENT BLOCKER — hosted auth fails; full-stack E2E BLOCKED
+
+`POST /api/v1/auth/session` → **HTTP 401 `INVALID_CREDENTIALS`** (NOT 500). Root cause: the migration created tables but **no demo users**. `DATABASE_URL` is a write-only Vercel **Sensitive Preview Secret** (`vercel env pull` returns `[SENSITIVE]`), so a local seed cannot reach the hosted DB. Prepared idempotent seed SQL at `C:\Users\theni\AppData\Local\Temp\opencode\neon_seed.sql`: 14 INSERTs (2 orgs / 6 users / 6 memberships), `created_at` present, `ON CONFLICT (id) DO NOTHING`, `BEGIN`/`COMMIT`, no DROP/DELETE, password hashes verified. **OWNER MUST run it in Neon SQL Editor next**; hosted auth/RBAC/parity/execution E2E is **BLOCKED** until then. Do NOT report hosted E2E as passed.
+
+### Env / Gemini / assets / README
+
+- **Env:** 12 backend env vars + `VITE_API_BASE_URL`; all optional except `DATABASE_URL` (effectively required in production, `api/app/config.py`).
+- **GEMINI = IMPLEMENTED-BUT-UNWIRED:** real `genai.Client` at `gemini_provider.py:112`, but NO HTTP route/UI and `FEATURE_AI_EXTRACTION` gates nothing. Adding `GEMINI_API_KEY` alone does NOT enable live AI — endpoint/UI is a scope change requiring owner authorization. Billable AI NOT enabled (consistent with the SIMULATED verdict in the completeness matrix above).
+- **Assets:** fonts serve real `font/woff2` bytes (not broken), now tracked with OFL 1.1 notices preserved. New official `public/favicon.svg` derived from the project's own `Logo()` inline SVG + OG tags in `index.html` (no `og:image`); no favicon existed before — now fixed. Film/noir return SPA `text/html` fallback because `.vercelignore` excludes them — **INTENTIONAL**, rights UNRESOLVED, must not publish without consent.
+- **README:** rebuilt screenshot-free — 504 lines, 28 sections, 4 Mermaid, 0 screenshot refs, 57/57 relative links resolve. Live-URL section states honestly: "Pending production release; Preview deployment validated". License remains MIT-proposed / **BLOCKED**.
+
+### Git
+
+Branch `release/readme-refresh`. Commits: `5bff127` (PR #3 original), `b40e0b0` ("docs: screenshot-free README, official favicon and OFL fonts", pushed). PR #3 (https://github.com/the-nidhi-bhat/LEXORA-LegalX/pull/3) **OPEN / MERGEABLE**, head `b40e0b0`, CI checks pass (Vercel deploy pending at record time). PR #2 **MERGED** → `main` `629a07c1adbee7a12c1f424d76ed9b61b4a2b9d6`; `origin/integration/legalx-v1` = `838ad0c`. Working tree preserves pre-existing `.gitignore` + `docs/STATE.md` contributor edits. **NO main merge, NO production promotion** by this workstream.
+
+### Local tests (real, pre-deploy)
+
+pytest 447 passed / 3 skipped / 1 warning; tsc 0; npm test 9/9; build 0 (479.17 kB main + 539.45 kB Sculpture, pre-existing >500 kB advisory); parity E2E 10/0/0; rehearse:judge 30/30 pages / 5/5 roles. Post-README-change re-verified: tsc 0, build 0, favicon + fonts present in `dist`.
+
+### Addendum verdict summary
+
+| Area | Status |
+|---|---|
+| Preview deploy (`READY`) + health/route smoke | **PASS** |
+| DB migration `e25c7211a088` | **PASS (owner-executed, verified)** |
+| Hosted auth (`POST /api/v1/auth/session`) | **BLOCKED — 401 INVALID_CREDENTIALS (no seeded users)** |
+| Hosted auth / RBAC / parity / execution E2E | **BLOCKED — pending owner seed**; NOT passed |
+| Production release | **BLOCKED — needs explicit owner approval** |
+| Licensing / media rights | **BLOCKED — consent + provenance unresolved** |
+
+**Overall (unchanged): FULL-STACK NOT COMPLETE.** Blocker = owner applies `neon_seed.sql`; then hosted E2E (auth, agreements, persistence, IR, parity, trust passport, execution gate, RBAC, routes, mobile) must run and pass. Production promotion requires separate explicit owner approval.
+
+### RELEASE CHECKLIST — owner-approval items (none completed by this workstream)
+
+1. **Apply seed SQL** — owner runs `neon_seed.sql` in Neon SQL Editor, then re-run hosted auth/RBAC/parity/execution E2E to green.
+2. **Official logo / favicon sign-off** — favicon drafted from the project's own SVG; needs owner approval as the official mark (incl. OG-image decision).
+3. **Film/noir media rights clearance** — rights UNRESOLVED; assets stay excluded/unpublished until consent is documented.
+4. **Merge PR #3 to `main`** after checks (PR #3 currently OPEN/MERGEABLE, head `b40e0b0`); no merge performed by this workstream.
+5. **MIT licensing / contributor consent + OFL carve-out** — license is MIT-proposed/BLOCKED; obtain contributor consent and preserve font OFL 1.1 notices.
+6. **Production DB + secret config + explicit production deploy authorization** — production DB, secrets, and a separate, explicit owner authorization for any `--prod` promotion.
