@@ -59,9 +59,23 @@ def sign_in(
     settings = get_settings()
     ip = request.client.host if request.client else "unknown"
     key = (payload.email, ip)
+    # Namespaced so source-IP traffic can never collide with an email key.
+    ip_key = ("__ip__", ip)
 
-    # Consume the slot and check the limit in one atomic step so concurrent
-    # attempts cannot all observe a not-yet-full bucket (B-09).
+    # A second, higher budget on the same limiter bounds credential stuffing
+    # across many email addresses from one source (B-07). Both gates consume
+    # their slot atomically (B-09).
+    ip_allowed, ip_retry_after, ip_stamp = limiter.check_and_record(
+        ip_key, attempts=settings.login_ip_rate_limit_attempts
+    )
+    if not ip_allowed:
+        raise ApiError(
+            429,
+            "RATE_LIMITED",
+            "Too many sign-in attempts from this address. Please try again later.",
+            headers={"Retry-After": str(ip_retry_after)},
+        )
+
     allowed, retry_after, stamp = limiter.check_and_record(key)
     if not allowed:
         raise ApiError(
@@ -86,9 +100,10 @@ def sign_in(
     ).first()
     if membership_row is None:
         # Credentials were valid: this is an authorization outcome, not a
-        # credential failure, so release the atomically consumed slot again
-        # without clearing any earlier failures for this key (B-11).
+        # credential failure, so release the atomically consumed slots again
+        # without clearing any earlier failures for these keys (B-11/B-07).
         limiter.unrecord(key, stamp)
+        limiter.unrecord(ip_key, ip_stamp)
         raise ApiError.forbidden("Your account has no workspace membership.")
     membership, organization = membership_row
 
@@ -118,6 +133,7 @@ def sign_in(
     db.add(row)
     db.commit()
     limiter.reset(key)
+    limiter.reset(ip_key)
 
     response.set_cookie(
         key=settings.session_cookie_name,

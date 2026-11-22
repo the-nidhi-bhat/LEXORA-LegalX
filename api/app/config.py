@@ -61,6 +61,7 @@ class Settings:
     feature_ai_extraction: bool = False  # D-10: off by default
 
     login_rate_limit_attempts: int = 5
+    login_ip_rate_limit_attempts: int = 20
     login_rate_limit_window_seconds: int = 900
 
     @property
@@ -131,6 +132,7 @@ def load_settings(env: Optional[dict] = None) -> Settings:
         demo_tamper_endpoint=demo_tamper,
         feature_ai_extraction=_as_bool(source.get("FEATURE_AI_EXTRACTION"), default=False),
         login_rate_limit_attempts=_as_int(source.get("LOGIN_RATE_LIMIT_ATTEMPTS"), 5, "LOGIN_RATE_LIMIT_ATTEMPTS", 1),
+        login_ip_rate_limit_attempts=_as_int(source.get("LOGIN_IP_RATE_LIMIT_ATTEMPTS"), 20, "LOGIN_IP_RATE_LIMIT_ATTEMPTS", 1),
         login_rate_limit_window_seconds=_as_int(source.get("LOGIN_RATE_LIMIT_WINDOW_SECONDS"), 900, "LOGIN_RATE_LIMIT_WINDOW_SECONDS", 1),
     )
 
