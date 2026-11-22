@@ -112,6 +112,40 @@ def _approval_count(db: DbSession, version: Optional[AgreementVersion]) -> int:
     )
 
 
+def _record_failed_execution(
+    db: DbSession,
+    agreement: Agreement,
+    ctx: SessionContext,
+    version: Optional[AgreementVersion],
+    reason: str,
+) -> None:
+    """Append an audit event for a blocked execution attempt.
+
+    Gate failures raise and ``get_db`` then rolls the request session back, so
+    the event is committed here explicitly. Append-only: no gate state changes
+    and the caller still raises the original error.
+    """
+    db.add(
+        ActivityEvent(
+            id=str(uuid.uuid4()),
+            agreement_id=agreement.id,
+            actor_user_id=ctx.user_id,
+            event_type="agreement.execution_failed",
+            payload=json.dumps(
+                {
+                    "triggered_by": ctx.user_id,
+                    "version": version.version if version else None,
+                    "approval_policy": agreement.approval_policy,
+                    "reason": reason,
+                },
+                sort_keys=True,
+            ),
+            created_at=utcnow(),
+        )
+    )
+    db.commit()
+
+
 def _check_approvals(
     db: DbSession, agreement: Agreement, ctx: SessionContext, version: Optional[AgreementVersion]
 ) -> tuple[bool, str]:
@@ -322,6 +356,7 @@ def attempt_execution(
     approved, reason = _check_approvals(db, agreement, ctx, version)
 
     if not approved:
+        _record_failed_execution(db, agreement, ctx, version, reason)
         raise ApiError.forbidden(
             f"Execution blocked: {reason}. "
             "Required approvals not found on the current version."
@@ -329,12 +364,16 @@ def attempt_execution(
 
     # Check that the user is an approved party for the agreement
     if not _is_approved_party(ctx, agreement, db):
+        _record_failed_execution(db, agreement, ctx, version, "user is not an approved party")
         raise ApiError.forbidden(
             "Execution blocked: user is not an approved party for this agreement."
         )
 
     # Check agreement state - must be draft (early rejection before doing work)
     if agreement.status != "draft":
+        _record_failed_execution(
+            db, agreement, ctx, version, f"agreement is in '{agreement.status}' state"
+        )
         raise ApiError.forbidden(
             f"Execution blocked: agreement must be in 'draft' state, "
             f"got '{agreement.status}'."
@@ -358,6 +397,7 @@ def attempt_execution(
         # longer 'draft' (a concurrent execution or another status change won
         # the race). The in-memory `agreement` is stale here — refreshed only
         # below — so do NOT report its cached 'draft' value as the new state.
+        _record_failed_execution(db, agreement, ctx, version, "agreement no longer in draft state")
         raise ApiError.forbidden(
             "Execution blocked: agreement is no longer in 'draft' state "
             "(concurrent execution or a status change). Refresh and retry."
