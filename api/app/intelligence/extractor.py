@@ -168,6 +168,26 @@ def extract_agreement(
 # ---------------------------------------------------------------------------
 
 
+def _span_is_within_text(span, text: str) -> bool:
+    """True when a byte span is a valid, non-empty range inside ``text``.
+
+    Provenance offsets are byte offsets into the UTF-8 encoding of the stored
+    text. Without this check an out-of-range span could be persisted and later
+    used to slice unrelated bytes from the source.
+    """
+    if not isinstance(span, (tuple, list)) or len(span) != 2:
+        return False
+    start, end = span
+    if (
+        isinstance(start, bool)
+        or isinstance(end, bool)
+        or not isinstance(start, int)
+        or not isinstance(end, int)
+    ):
+        return False
+    return 0 <= start < end <= len(text.encode("utf-8"))
+
+
 class _Resolver:
     """Resolves extracted values against the source text."""
 
@@ -204,6 +224,13 @@ class _Resolver:
             self._record_missing(
                 field,
                 "the quoted evidence for this value was not found in the description",
+                f"Please quote the passage that states the {field.replace('_', ' ')}.",
+            )
+            return None
+        if not _span_is_within_text(span, self.text):
+            self._record_missing(
+                field,
+                "the quoted evidence points outside the source text",
                 f"Please quote the passage that states the {field.replace('_', ' ')}.",
             )
             return None
