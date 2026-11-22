@@ -94,6 +94,9 @@ class ScenarioOutcome:
     missing_fields: List[str] = field(default_factory=list)
     unsupported_terms: List[str] = field(default_factory=list)
     notes: List[str] = field(default_factory=list)
+    #: True only when a raw response was actually captured from the provider.
+    #: When it is False the outcome carries no score attributable to a model.
+    scored_from_model_output: bool = True
 
 
 @dataclass
@@ -102,15 +105,22 @@ class EvaluationReport:
 
     ``totals`` carries the aggregate values plus a ``denominators`` block, so
     every rate can be read together with the population it was computed over.
+
+    ``live_scores_valid`` is ``None`` for scripted (simulated) runs. For a live
+    run it is True only when every scenario yielded captured model output; a
+    live report with no captured output is explicitly marked invalid rather
+    than presenting the recorded fixture as a model score.
     """
 
     mode: str
     scenarios: List[ScenarioOutcome]
     totals: Dict[str, Any]
+    live_scores_valid: Optional[bool] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "mode": self.mode,
+            "live_scores_valid": self.live_scores_valid,
             "totals": self.totals,
             "scenarios": [asdict(outcome) for outcome in self.scenarios],
         }
@@ -291,6 +301,17 @@ def _parse_raw_output(raw: Any) -> Any:
         return None
 
 
+def _payload_is_valid(raw: Any) -> bool:
+    """Schema-check the payload actually returned by the provider."""
+    if not isinstance(raw, dict):
+        return False
+    try:
+        ExtractionPayload.model_validate(raw)
+        return True
+    except Exception:  # noqa: BLE001 - invalid payloads are counted, not raised
+        return False
+
+
 class _RecordingProvider:
     """Wraps a provider so the harness can score the response it actually got.
 
@@ -315,6 +336,8 @@ def _score_scenario(
     result: ExtractionResult,
     schema_valid: bool,
     raw_output: Any = None,
+    *,
+    captured: bool = True,
 ) -> ScenarioOutcome:
     expected = scenario.expected
     expected_ir = expected.get("ir", {}) or {}
@@ -387,15 +410,19 @@ def _score_scenario(
     actual_unsupported = set(result.unsupported_terms)
 
     notes: List[str] = []
+    if not captured:
+        # A live provider that returned nothing must not inherit a score from
+        # the recorded fixture. The metrics below are not attributable to a model.
+        notes.append("no model output was captured; no score can be attributed to the model")
     if expected_unsupported != actual_unsupported:
         notes.append(
             f"unsupported terms differ: expected {sorted(expected_unsupported)}, "
             f"got {sorted(actual_unsupported)}"
         )
 
-    measurement = _hallucination_measurement(
-        scenario.description, scenario.provider_output
-    )
+    # Score the payload the provider actually returned. Falling back to the
+    # scenario fixture here is what fabricated "live" scores in the first place.
+    measurement = _hallucination_measurement(scenario.description, raw_output)
     if measurement.checked == 0:
         notes.append(
             "unsupported-value hallucination rate is not measurable: the payload "
@@ -420,6 +447,7 @@ def _score_scenario(
         missing_fields=sorted(actual_missing),
         unsupported_terms=sorted(actual_unsupported),
         notes=notes,
+        scored_from_model_output=captured,
     )
 
 
@@ -447,13 +475,21 @@ def evaluate_dataset(
     outcomes: List[ScenarioOutcome] = []
     for scenario in scenarios:
         provider = provider_factory(scenario)
-        result = extract_agreement(scenario.description, provider)
-        try:
-            ExtractionPayload.model_validate(scenario.provider_output)
-            schema_valid = True
-        except Exception:  # noqa: BLE001
-            schema_valid = False
-        outcomes.append(_score_scenario(scenario, result, schema_valid))
+        # Capture the real response so every metric below is computed from what
+        # the provider actually returned, never from the recorded fixture.
+        recording = _RecordingProvider(provider)
+        result = extract_agreement(scenario.description, recording)
+        raw_output = _parse_raw_output(recording.raw_text)
+        schema_valid = _payload_is_valid(raw_output)
+        outcomes.append(
+            _score_scenario(
+                scenario,
+                result,
+                schema_valid,
+                raw_output=raw_output,
+                captured=recording.raw_text is not None,
+            )
+        )
 
     # Field/amount/date/role metrics only make sense for scenarios that expect
     # a draft IR; clarification and rejection scenarios are scored on status,
@@ -484,6 +520,9 @@ def evaluate_dataset(
         outcome.hallucination_unsupported_values for outcome in outcomes
     )
     schema_invalid = sum(1 for outcome in outcomes if not outcome.schema_valid)
+    output_captured = sum(
+        1 for outcome in outcomes if outcome.scored_from_model_output
+    )
 
     totals: Dict[str, Any] = {
         "scenarios": float(len(outcomes)),
@@ -512,9 +551,21 @@ def evaluate_dataset(
             "scenarios_schema_invalid": schema_invalid,
             "extracted_values_checked_for_support": hallucination_checked,
             "unsupported_extracted_values": hallucination_unsupported,
+            "scenarios_with_captured_model_output": output_captured,
         },
     }
-    return EvaluationReport(mode=mode, scenarios=outcomes, totals=totals)
+    # A live run earns the "live" label only when every scenario produced real
+    # model output. Otherwise the report is explicitly marked as not a valid
+    # live score instead of silently presenting fixture numbers as model results.
+    live_scores_valid: Optional[bool] = None
+    if mode.startswith("live"):
+        live_scores_valid = bool(outcomes) and output_captured == len(outcomes)
+    return EvaluationReport(
+        mode=mode,
+        scenarios=outcomes,
+        totals=totals,
+        live_scores_valid=live_scores_valid,
+    )
 
 
 def _live_provider_factory(scenario: Scenario):  # pragma: no cover - needs credentials

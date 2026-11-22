@@ -188,6 +188,19 @@ def _span_is_within_text(span, text: str) -> bool:
     return 0 <= start < end <= len(text.encode("utf-8"))
 
 
+def _span_matches_quote(span, text: str, quote: str) -> bool:
+    """True when the bytes at ``span`` are exactly the quoted passage.
+
+    A span can be inside the text's byte range yet point at completely
+    different bytes than the evidence quote. Such a span is fabricated
+    provenance: it must be omitted rather than persisted into the IR.
+    """
+    if not _span_is_within_text(span, text):
+        return False
+    start, end = span
+    return text.encode("utf-8")[start:end] == quote.encode("utf-8")
+
+
 class _Resolver:
     """Resolves extracted values against the source text."""
 
@@ -231,6 +244,13 @@ class _Resolver:
             self._record_missing(
                 field,
                 "the quoted evidence points outside the source text",
+                f"Please quote the passage that states the {field.replace('_', ' ')}.",
+            )
+            return None
+        if not _span_matches_quote(span, self.text, extracted.evidence):
+            self._record_missing(
+                field,
+                "the located evidence span does not match the quoted passage",
                 f"Please quote the passage that states the {field.replace('_', ' ')}.",
             )
             return None
