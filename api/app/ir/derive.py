@@ -13,7 +13,8 @@ import hashlib
 import re
 import unicodedata
 from datetime import date as date_type
-from typing import List, Optional
+from decimal import Decimal
+from typing import List, Optional, Union
 
 from pydantic import TypeAdapter
 
@@ -84,7 +85,7 @@ def _parse_date(value) -> date_type:
 def derive_ir_from_agreement(
     agreement_type: str,
     currency: str,
-    total_amount: float,
+    total_amount: Union[int, float, Decimal],
     parties: list[dict],
     milestones: list[dict],
     review_period_days: int,

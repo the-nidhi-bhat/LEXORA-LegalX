@@ -12,8 +12,9 @@ from __future__ import annotations
 import re
 import unicodedata
 from datetime import date
+from decimal import Decimal, InvalidOperation, ROUND_HALF_EVEN
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator, validator
 
@@ -197,6 +198,14 @@ class ContractIR(BaseModel):
         return self
 
     @model_validator(mode="after")
+    def _validate_unique_milestone_seqs(self) -> "ContractIR":
+        """Duplicate sequence numbers make canonical comparison ambiguous."""
+        seqs = [m.seq for m in self.milestones]
+        if len(set(seqs)) != len(seqs):
+            raise ValueError("Milestone seq values must be unique")
+        return self
+
+    @model_validator(mode="after")
     def _validate_parties_required_roles(self) -> "ContractIR":
         """Ensure at least client and provider are present."""
         parties: list[Party] = self.parties
@@ -266,16 +275,21 @@ def default_version_id() -> str:
 # ---------------------------------------------------------------------------
 
 
-def rupees_to_paise(rupees: float) -> int:
+def rupees_to_paise(rupees: Union[int, float, Decimal, str]) -> int:
     """Convert rupees to integer paise. ₹50,000 → 5000000 paise.
 
-    Rounds to nearest paise; rejects floats that are not representable exactly.
+    Uses ``Decimal`` rather than binary floating point: ``rupees * 100`` in
+    float rounds incorrectly for values such as 1.015 and loses integer
+    precision for large amounts (beyond 2**53). The decimal value is rounded
+    to the nearest paise with the same half-even rule Python's ``round`` uses.
     """
-    paise = int(round(rupees * 100))
-    # Verify round-trip exactness
-    if paise / 100 != round(rupees, 2):
-        raise ValueError("Float cannot be represented exactly in paise")
-    return paise
+    try:
+        value = Decimal(str(rupees))
+    except (InvalidOperation, ValueError) as exc:
+        raise ValueError("Rupee amount must be a decimal number") from exc
+    if not value.is_finite():
+        raise ValueError("Rupee amount must be finite")
+    return int((value * 100).to_integral_value(rounding=ROUND_HALF_EVEN))
 
 
 # ---------------------------------------------------------------------------

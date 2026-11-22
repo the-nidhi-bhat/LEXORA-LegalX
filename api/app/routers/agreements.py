@@ -304,26 +304,21 @@ def list_agreements(
             parties_by_agreement.setdefault(party.agreement_id, []).append(party)
 
     versions_by_agreement: Dict[str, AgreementVersion] = {}
+    versions_by_id: Dict[str, AgreementVersion] = {}
     if ids:
         for version in db.scalars(
             select(AgreementVersion).where(AgreementVersion.agreement_id.in_(ids))
         ).all():
+            versions_by_id[version.id] = version
             current = versions_by_agreement.get(version.agreement_id)
             if current is None or version.version > current.version:
                 versions_by_agreement[version.agreement_id] = version
 
     items: List[Dict[str, Any]] = []
     for row in rows:
-        version = None
-        if row.current_version_id:
-            version = next(
-                (
-                    v
-                    for v in [db.get(AgreementVersion, row.current_version_id)]
-                    if v is not None
-                ),
-                None,
-            )
+        # Resolve current_version_id from the batched lookup above: a per-row
+        # db.get() here made the list endpoint issue one extra SELECT per item.
+        version = versions_by_id.get(row.current_version_id) if row.current_version_id else None
         if version is None:
             version = versions_by_agreement.get(row.id)
         items.append(_item(row, parties_by_agreement.get(row.id, []), version.version if version else None))

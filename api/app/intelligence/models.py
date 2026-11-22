@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from api.app.schemas.ir import ContractIR
 
@@ -41,6 +41,12 @@ class SourceSpan(BaseModel):
 
     start: int = Field(..., ge=0)
     end: int = Field(..., gt=0)
+
+    @model_validator(mode="after")
+    def _validate_order(self) -> "SourceSpan":
+        if self.end <= self.start:
+            raise ValueError("source_span end must be greater than start")
+        return self
 
 
 class ExtractedValue(StrictModel):
