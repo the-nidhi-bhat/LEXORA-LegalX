@@ -24,6 +24,23 @@ function sleep(ms: number, signal?: AbortSignal | null) {
   })
 }
 
+/** Upper bound for a server-supplied Retry-After delay, so a bad header cannot stall the client. */
+const MAX_RETRY_AFTER_MS = 30_000
+
+/** Parse Retry-After (delta-seconds or HTTP-date) into milliseconds; null means absent/invalid. */
+export function parseRetryAfter(header: string | null, now = Date.now(), maxMs = MAX_RETRY_AFTER_MS): number | null {
+  if (!header) return null
+  const value = header.trim()
+  if (!value) return null
+  if (/^\d+$/.test(value)) {
+    const seconds = Number(value)
+    return Number.isFinite(seconds) ? Math.min(seconds * 1000, maxMs) : null
+  }
+  const parsed = Date.parse(value)
+  if (Number.isNaN(parsed)) return null
+  return Math.min(Math.max(parsed - now, 0), maxMs)
+}
+
 function buildUrl(path: string, query?: RequestOptions['query']): string {
   const base = getApiBaseUrl()
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
@@ -45,7 +62,16 @@ function toErrorEnvelope(code: ApiErrorCode | string, message: string, details?:
   return { ok: false, error: { code, message, details }, requestId }
 }
 
+/** Only { error: { code | message, ... } } is a backend error envelope; other `error` fields are data. */
+function isBackendErrorEnvelope(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false
+  const error = value as Record<string, unknown>
+  return 'code' in error || 'message' in error
+}
+
 async function parseEnvelope<T>(res: Response): Promise<ApiEnvelope<T>> {
+  // 204/205 must not have a body; normalize both to a single documented empty value.
+  if (res.status === 204 || res.status === 205) return { ok: true, data: null as T }
   const contentType = res.headers.get('content-type') || ''
   let body: any = null
   const mediaType = contentType.split(';')[0].trim().toLowerCase()
@@ -57,10 +83,11 @@ async function parseEnvelope<T>(res: Response): Promise<ApiEnvelope<T>> {
     }
   } else {
     try { body = await res.text() } catch { body = null }
+    if (res.ok) return toErrorEnvelope('INVALID_RESPONSE', mediaType ? `Unexpected content-type: ${mediaType}` : 'Successful response has no content-type')
   }
   if (body && typeof body === 'object' && ('ok' in body)) return body as ApiEnvelope<T>
   // Backend compatibility: FastAPI/custom envelope { error: { code, message, details }, request_id }
-  if (body && typeof body === 'object' && body.error && !('ok' in body)) {
+  if (body && typeof body === 'object' && !('ok' in body) && isBackendErrorEnvelope(body.error)) {
     const err = body.error || {}
     return toErrorEnvelope(err.code || (res.status === 401 ? 'UNAUTHORIZED' : res.status === 403 ? 'FORBIDDEN' : res.status === 404 ? 'NOT_FOUND' : 'UNKNOWN_ERROR'), err.message || `Request failed (${res.status})`, err.details ?? body, err.request_id || body.request_id || body.requestId)
   }
@@ -98,7 +125,8 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       if (init.signal?.aborted) return toErrorEnvelope('CANCELLED', 'Request cancelled')
       if (!env.ok && canRetry && attempt < retry && isRetryableStatus(res.status)) {
         attempt += 1
-        await sleep(retryDelayMs * attempt, init.signal)
+        const retryAfter = parseRetryAfter(res.headers.get('retry-after'))
+        await sleep(retryAfter ?? retryDelayMs * attempt, init.signal)
         continue
       }
       return env
@@ -195,10 +223,7 @@ export async function healthApi(): Promise<ApiEnvelope<any>> {
   try {
     const res = await fetch('/api/health', { credentials: 'include', signal: controller.signal })
     clearTimeout(timer)
-    const ct = res.headers.get('content-type') || ''
-    const body = ct.includes('application/json') ? await res.json() : await res.text()
-    if (res.ok) return { ok: true, data: body }
-    return toErrorEnvelope('UNKNOWN_ERROR', (body as any)?.message || `Health request failed (${res.status})`, body)
+    return await parseEnvelope<any>(res)
   } catch (err: any) {
     clearTimeout(timer)
     return toErrorEnvelope(err?.name === 'AbortError' ? 'TIMEOUT' : 'NETWORK_ERROR', err?.message || 'Health request failed')

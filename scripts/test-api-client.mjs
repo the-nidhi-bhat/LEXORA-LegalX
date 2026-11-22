@@ -77,3 +77,83 @@ globalThis.fetch = async (_url, { signal }) => new Response(new ReadableStream({
 }), { headers: { 'Content-Type': 'application/json' } })
 const stalled = await api.apiClient.get('/slow-body', { timeoutMs: 10, retry: 0 })
 assert.equal(stalled.error.code, 'TIMEOUT')
+
+// B-01: a 429 Retry-After header must override the fixed exponential backoff.
+{
+  const started = Date.now()
+  let attempts = 0
+  globalThis.fetch = async () => {
+    attempts++
+    return new Response(JSON.stringify({ error: { code: 'RATE_LIMITED', message: 'slow down' } }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', 'Retry-After': '0' },
+    })
+  }
+  const limited = await api.apiRequest('/rate-limited', { method: 'GET', retry: 2, retryDelayMs: 5000 })
+  assert.equal(limited.ok, false)
+  assert.equal(attempts, 3, '429 retries up to the configured max attempts')
+  assert.ok(Date.now() - started < 2000, 'Retry-After: 0 honored instead of the fixed 5s backoff')
+}
+{
+  const { parseRetryAfter } = api
+  assert.equal(parseRetryAfter('0', 1000), 0)
+  assert.equal(parseRetryAfter('2', 1000), 2000, 'delta-seconds form parsed')
+  assert.equal(parseRetryAfter('120', 1000), 30000, 'delay is capped')
+  assert.equal(parseRetryAfter(new Date(6000).toUTCString(), 1000), 5000, 'HTTP-date form parsed')
+  assert.equal(parseRetryAfter('not-a-date', 1000), null, 'invalid header falls back to backoff')
+  assert.equal(parseRetryAfter(null, 1000), null)
+}
+
+// B-02: healthApi must surface malformed JSON as INVALID_RESPONSE, not NETWORK_ERROR.
+{
+  globalThis.fetch = async () => new Response('{', { status: 200, headers: { 'Content-Type': 'application/json' } })
+  const malformedHealth = await api.healthApi()
+  assert.equal(malformedHealth.ok, false)
+  assert.equal(malformedHealth.error.code, 'INVALID_RESPONSE')
+}
+{
+  globalThis.fetch = async () => Response.json({ status: 'ok' })
+  assert.deepEqual(await api.healthApi(), { ok: true, data: { status: 'ok' } }, 'valid health payload still succeeds')
+}
+
+// B-03: a 2xx payload with a non-envelope `error` field is data, not a failure.
+{
+  const payload = { id: 'agreement-1', title: 'Valid document', error: 'informational warning' }
+  globalThis.fetch = async () => Response.json(payload)
+  assert.deepEqual(await api.apiClient.get('/agreements/1'), { ok: true, data: payload }, 'string error field is data')
+}
+{
+  const payload = { id: 'agreement-1', error: { reason: 'not-an-error-envelope' } }
+  globalThis.fetch = async () => Response.json(payload)
+  assert.deepEqual(await api.apiClient.get('/agreements/1'), { ok: true, data: payload }, 'object without code/message is data')
+}
+{
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: { code: 'VALIDATION_FAILED', message: 'bad input' }, request_id: 'req-1' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
+  const realError = await api.apiClient.post('/agreements', {})
+  assert.equal(realError.ok, false)
+  assert.equal(realError.error.code, 'VALIDATION_FAILED', 'real error envelope is still coerced')
+  assert.equal(realError.error.message, 'bad input')
+}
+
+// B-04: 204/205 responses must normalize to data:null, not an empty string.
+for (const status of [204, 205]) {
+  globalThis.fetch = async () => new Response(null, { status })
+  assert.deepEqual(await api.apiClient.get('/empty'), { ok: true, data: null }, `status ${status} yields data:null`)
+}
+
+// B-05: a 2xx HTML (non-JSON) response must not be accepted as success.
+{
+  globalThis.fetch = async () => new Response('<html><body>Please log in</body></html>', {
+    status: 200,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  })
+  const html = await api.apiClient.get('/dashboard')
+  assert.equal(html.ok, false)
+  assert.equal(html.error.code, 'INVALID_RESPONSE')
+}
+{
+  globalThis.fetch = async () => new Response('plain text', { status: 200, headers: { 'Content-Type': 'text/plain' } })
+  const text = await api.apiClient.get('/plain')
+  assert.equal(text.ok, false)
+  assert.equal(text.error.code, 'INVALID_RESPONSE')
+}
