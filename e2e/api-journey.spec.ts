@@ -6,7 +6,7 @@ import { agreementPayload, mutate, PERSONAS, signIn } from './helpers'
 // Vite dev-server proxy (port 3000) couples them to frontend compilation: Vite
 // can stall for >30s while rebuilding large modules, which shows up here as a
 // test timeout. Talk to the managed uvicorn webServer directly instead.
-test.use({ baseURL: 'http://127.0.0.1:8010' })
+test.use({ baseURL: process.env.E2E_API_BASE ?? 'http://127.0.0.1:8010' })
 
 const RUN = Date.now().toString(36)
 
