@@ -5,6 +5,7 @@ import { defineConfig } from '@playwright/test'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { configureE2eDatabase } from './e2e/test-env'
+process.env.E2E_API_BASE ??= 'http://127.0.0.1:8011';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const PYTHON = path.join(ROOT, '.venv', 'Scripts', 'python.exe')
