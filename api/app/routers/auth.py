@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request, Response
-from sqlalchemy import select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session as DbSession
 
 from api.app.config import get_settings
@@ -94,6 +94,18 @@ def sign_in(
 
     token = generate_session_token()
     now = utcnow()
+    # Bounded cleanup: a successful sign-in prunes only this user's expired
+    # rows, in the same transaction as the new session. Without this the table
+    # grows without bound from abandoned logins (B-12).
+    db.execute(
+        delete(SessionRow).where(
+            SessionRow.user_id == user.id,
+            or_(
+                SessionRow.expires_at < now,
+                SessionRow.absolute_expires_at < now,
+            ),
+        )
+    )
     row = SessionRow(
         token_hash=hash_token(token),
         user_id=user.id,
