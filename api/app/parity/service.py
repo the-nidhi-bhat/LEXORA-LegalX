@@ -47,7 +47,7 @@ from api.app.parity.execution_parameters import ExecutionParameters
 from api.app.routers.agreements import _current_version, _milestone_dicts, _party_dicts
 from api.app.schemas.ir import ContractIR, DisputeBehavior, GoverningLaw
 from api.app.schemas.parity import ExecutionParametersInput
-from api.app.timeutil import to_wire, utcnow
+from api.app.timeutil import to_wire, utcnow, utcnow_aware
 
 
 #: Reported as ``engine_version`` on every appended verification run.
@@ -264,7 +264,7 @@ def _append_verification_artifacts(
         version_id=version.id,
         policy_version=result.parity_rules_version,
         passed=not result.is_blocked,
-        checked_at=verified_at,
+        checked_at=verified_at.replace(tzinfo=None),
         critical_count=len(blocking_fields),
         advisory_count=advisory_count,
         rows_json=_json_canonical(field_results),
@@ -295,7 +295,7 @@ def _append_verification_artifacts(
         approvals_complete=approvals_complete,
         field_results_json=_json_canonical(field_results),
         message=result.message,
-        verified_at=verified_at,
+        verified_at=verified_at.replace(tzinfo=None),
         verified_by=ctx.user_id,
         engine_version=ENGINE_VERSION,
         request_id=request_id or "",
@@ -319,7 +319,9 @@ def run_verification(
     approvals_complete = compute_approval_state(db, agreement, version)[2]
     inputs = build_comparison_inputs(agreement, version, clarification)
 
-    verified_at = utcnow()
+    # The engine receives an explicitly UTC-aware timestamp; DB columns keep
+    # the project's naive-UTC convention (see timeutil.utcnow).
+    verified_at = utcnow_aware()
     engine = ParityEngine(inputs.approved_ir, inputs.execution_params)
     result = engine.compare(verified_at=verified_at)
     stale = engine.is_stale()
@@ -408,7 +410,7 @@ def build_trust_passport(
     )
     inputs = build_comparison_inputs(agreement, version, clarification)
     engine = ParityEngine(inputs.approved_ir, stored_params)
-    current = engine.compare(verified_at=utcnow())
+    current = engine.compare(verified_at=utcnow_aware())
     stale = engine.is_stale(
         other_agreement_id=agreement.id,
         other_version_id=version.id,
