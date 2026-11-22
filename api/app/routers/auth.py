@@ -85,7 +85,8 @@ def sign_in(
         .order_by(Membership.created_at.asc())
     ).first()
     if membership_row is None:
-        limiter.record_failure(key)
+        # Credentials were valid: this is an authorization outcome, not a
+        # credential failure, so it must not consume the sign-in failure budget.
         raise ApiError.forbidden("Your account has no workspace membership.")
     membership, organization = membership_row
 
