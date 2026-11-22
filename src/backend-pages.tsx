@@ -3,10 +3,11 @@
    so authenticated workflows always show real persisted data. Demo mode keeps
    the original components, clearly labeled. */
 import React, { useCallback, useEffect, useState } from 'react'
-import { agreementsApi, versionsApi, activityApi, executionApi } from './api/client.ts'
+import { agreementsApi, versionsApi, activityApi } from './api/client.ts'
+import { safeGet, safeSet } from './components/safeStorage'
 
-const csrf = () => localStorage.getItem('legalx:csrf') || ''
-const activeId = () => localStorage.getItem('legalx:active-agreement') || ''
+const csrf = () => safeGet('legalx:csrf') || ''
+const activeId = () => safeGet('legalx:active-agreement') || ''
 const errMsg = (env: any) => (env && env.error && env.error.message) || 'The request failed. Please try again.'
 const pick = (o: any, ...keys: string[]): any => {
   for (const k of keys) if (o && o[k] !== undefined && o[k] !== null && o[k] !== '') return o[k]
@@ -68,7 +69,7 @@ export function BackendAgreementsList({ onNavigate }: { onNavigate: (p: string) 
         : filtered.map((a: any) => {
           const id = String(pick(a, 'id', 'agreement_id') || '')
           return <button key={id} className="field-row-button agreement-rows" onClick={() => {
-            if (id) localStorage.setItem('legalx:active-agreement', id)
+            if (id) safeSet('legalx:active-agreement', id)
             onNavigate('/app/agreements/website-project')
           }}>
             <div><b>{pick(a, 'title', 'name') || 'Untitled agreement'}</b><div className="muted">{(pick(a, 'agreement_type') || 'agreement') + ' · ' + id.slice(0, 8)}</div></div>
@@ -88,6 +89,7 @@ export function BackendAgreementDetail({ onNavigate }: { onNavigate: (p: string)
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState('')
   const [saveState, setSaveState] = useState('')
+  const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
     const id = activeId()
@@ -102,12 +104,15 @@ export function BackendAgreementDetail({ onNavigate }: { onNavigate: (p: string)
   useEffect(() => { load() }, [load])
 
   const save = async () => {
+    if (saving) return
     const id = activeId()
     if (!id || !title.trim()) { setSaveState('Enter a title before saving.'); return }
-    setSaveState('Saving…')
-    const env: any = await agreementsApi.update(id, { title: title.trim() }, csrf())
-    if (env.ok) { setAgreement(env.data); setSaveState('Saved to the backend.') }
-    else setSaveState('Save failed: ' + errMsg(env))
+    setSaving(true); setSaveState('Saving…')
+    try {
+      const env: any = await agreementsApi.update(id, { title: title.trim() }, csrf())
+      if (env.ok) { setAgreement(env.data); setSaveState('Saved to the backend.') }
+      else setSaveState('Save failed: ' + errMsg(env))
+    } finally { setSaving(false) }
   }
 
   if (loading) return <div className="lx-agreement-detail persisted-record"><div className="page-header"><div><span className="section-kicker">AGREEMENT DETAIL</span><h1>Loading agreement…</h1></div></div><div className="empty-state">Fetching persisted record from the backend.</div></div>
@@ -150,7 +155,7 @@ export function BackendAgreementDetail({ onNavigate }: { onNavigate: (p: string)
         {editing ? <div style={{ display: 'grid', gap: 10 }}>
           <label>Title<input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn primary" onClick={save}>Save changes</button>
+            <button className="btn primary" disabled={saving} aria-busy={saving} onClick={save}>Save changes</button>
             <button className="btn secondary" onClick={() => { setEditing(false); setTitle(String(agreement?.title || '')); setSaveState('') }}>Cancel</button>
           </div>
           {saveState && <p className={saveState.startsWith('Save failed') || saveState.startsWith('Enter') ? 'inline-error' : 'muted'}>{saveState}</p>}
@@ -267,17 +272,25 @@ export function BackendExecution({ role }: { role?: string }) {
   const [busy, setBusy] = useState(false)
   const id = activeId()
 
+  // READ-ONLY: eligibility is derived from persisted agreement/version records.
+  // POST /execution performs the actual state transition and is never called by
+  // this check; it remains a separate authorized action behind the full gate.
   const check = async () => {
     if (!id) { setState('Select an agreement first.'); return }
     setBusy(true); setState('Checking execution eligibility…')
-    const env: any = await executionApi.run(id, { confirm: false }, csrf())
-    setBusy(false)
-    if (env.ok) {
-      const d: any = env.data
-      setState('Eligible: ' + String(pick(d, 'status', 'eligibility', 'message') || 'ready'))
-    } else if (env.error && (env.error.code === 'FORBIDDEN' || /blocked/i.test(env.error.message || ''))) {
-      setState('Blocked: ' + env.error.message)
-    } else setState('Check failed: ' + errMsg(env))
+    try {
+      const env: any = await agreementsApi.get(id)
+      if (!env.ok) { setState('Check failed: ' + errMsg(env)); return }
+      const record: any = env.data
+      const status = String(pick(record, 'status', 'state') || 'unknown')
+      const policy = String(pick(record, 'approval_policy') || 'unknown')
+      if (status !== 'draft') { setState(`Not eligible: agreement status is '${status}' (execution requires draft).`); return }
+      const versionsEnv: any = await versionsApi.list(id)
+      const d: any = versionsEnv.data
+      const versions: any[] = Array.isArray(d) ? d : Array.isArray(d?.items) ? d.items : Array.isArray(d?.versions) ? d.versions : []
+      if (!versions.length) { setState(`Not eligible: no versions recorded for policy '${policy}'.`); return }
+      setState(`Eligibility signals: draft status, ${versions.length} version(s), policy '${policy}'. Read-only check — the authorized execution gate decides.`)
+    } finally { setBusy(false) }
   }
 
   return <div>

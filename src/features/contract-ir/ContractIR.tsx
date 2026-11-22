@@ -5,6 +5,7 @@ import { generateSolidity, runGenerationTests } from '../../solidity'
 import { buildClausesFromIr, deriveTraceability, diffIrs, affectedFromDiff } from '../../traceability'
 import { computeDrift, detectAndApplyDrift, ensureIntegrityFields, getAuditTrail, hashIr, logEvent, recordVersion, verifyAuditTrail } from '../../workflow-integrity'
 import { Badge, Button, Icon, PageHeader } from '../../components/ui'
+import { nextIrMajorVersion } from './version'
 
 function TraceabilityExplorer({ workflow }: { workflow: WorkflowState }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
@@ -161,7 +162,7 @@ function WhatIfSimulator({ workflow, role }: { workflow: WorkflowState; role: Ro
     if (s0.validation.status !== 'valid') { window.dispatchEvent(new CustomEvent('legalx:notice', { detail: 'Simulation must be valid before creating a revision.' })); return; }
     // explicit user choice handled by button label/confirm
     if (!window.confirm('Create a NEW revision from this simulation? Original approved IR/Solidity remain preserved in history; the new revision will reset approval and generated Solidity/tests.')) return;
-    const bumped = 'v'+((parseInt((cur.ir?.version||'v1').replace(/[^0-9]/g,''),10)||1)+1)+'.0';
+    const bumped = nextIrMajorVersion(cur.ir?.version || 'v1');
     const updatedIr = { ...JSON.parse(JSON.stringify(s0.draftIr)), version: bumped };
     const issues: string[] = []; if(updatedIr.total_amount<=0) issues.push('Total amount invalid'); if((updatedIr.milestones||[]).reduce((a:number,m:any)=>a+Number(m.amount||0),0)!==Number(updatedIr.total_amount)) issues.push('Milestone sum mismatch');
     const validation = { status: issues.length?'invalid':'valid', issues, checkedAt: new Date().toLocaleString() } as any;
@@ -320,9 +321,18 @@ export function ContractIR({ jsonView, setJsonView, onNavigate, workflow, role =
   const [selectedField, setSelectedField] = useState('');
   const [section, setSection] = useState('Overview');
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState('');
   const ir = w.ir as any;
   const validation = w.validation;
-  const copyIr = () => { if (!ir) return; navigator.clipboard?.writeText(JSON.stringify(ir, null, 2)); setCopied(true); window.dispatchEvent(new CustomEvent('legalx:notice', { detail: 'Contract IR copied locally. No external data was sent.' })); window.setTimeout(() => setCopied(false), 2200); };
+  const copyIr = () => {
+    if (!ir) return;
+    if (!navigator.clipboard?.writeText) { setCopied(false); setCopyError('Copy failed: clipboard is unavailable in this context.'); window.dispatchEvent(new CustomEvent('legalx:notice', { detail: 'Contract IR was not copied: clipboard unavailable.' })); return; }
+    navigator.clipboard.writeText(JSON.stringify(ir, null, 2)).then(() => {
+      setCopyError(''); setCopied(true); window.dispatchEvent(new CustomEvent('legalx:notice', { detail: 'Contract IR copied locally. No external data was sent.' })); window.setTimeout(() => setCopied(false), 2200);
+    }).catch(() => {
+      setCopied(false); setCopyError('Copy failed: clipboard write was rejected. Contract IR was not copied.'); window.dispatchEvent(new CustomEvent('legalx:notice', { detail: 'Contract IR copy failed. Nothing was copied.' }));
+    });
+  };
   if (!ir) return <div><PageHeader eyebrow="CONTRACT IR · TECHNICAL INSPECTOR" title="Contract inspector" desc="Generate Contract IR from agreement input before validation and parity." /><div className="panel"><p>No Contract IR yet.</p><p className="muted">Run clause extraction in the AI Workspace to generate the canonical IR (demo/local deterministic).</p><Button onClick={() => onNavigate('/app/ai-workspace')} icon="spark">Open AI Workspace</Button></div></div>;
   const sourceFor = (field: string) => ((ir.provenance||[]).find((p:any)=>p.field===field)||{source:'Derived from extraction'}).source;
   const fields = [
@@ -341,6 +351,7 @@ export function ContractIR({ jsonView, setJsonView, onNavigate, workflow, role =
     <PageHeader eyebrow="CONTRACT IR · STRUCTURED INSPECTOR" title="Contract inspector" desc="Clause navigation, field-level details, provenance/evidence, drift/version/audit, traceability, and isolated what-if simulation." />
     {drift?.status === 'drift_detected' && drift?.materialChange && <div className="inline-error" style={{marginBottom:12}}><Icon name="alert" size={14} /><span><b>Material drift detected.</b><small>Stale approval/execution readiness invalidated. Re-review and reapprove required.</small></span></div>}
     <div className="ir-toolbar"><div className="ir-tabs"><button className={!jsonView ? 'active' : ''} onClick={() => setJsonView(false)}>Structured view</button><button className={jsonView ? 'active' : ''} onClick={() => setJsonView(true)}>JSON view</button></div><div className="ir-toolbar-actions"><Badge tone={validation.status==='valid'?'success':validation.status==='invalid'?'danger':'warning'}>Validation: {validation.status}</Badge><Badge tone="warning">Demo/local IR · {ir.version}</Badge><Button kind="secondary" icon="copy" onClick={copyIr}>{copied ? 'Copied locally' : 'Copy IR'}</Button><Button onClick={() => onNavigate('/app/parity')} icon="scan">Run verification</Button></div></div>
+    {copyError && <p role="alert" className="inline-error" style={{marginTop:8}}>{copyError}</p>}
     {jsonView ? <pre className="json-view">{JSON.stringify({ ...ir, validation, mode: w.mode, approvedSnapshot: (w as any).approvedSnapshot, drift: (w as any).drift, versionHistory: ((w as any).versionHistory||[]).map((v:any)=>({irVersion:v.irVersion,irHash:v.irHash,solidityHash:v.solidity?.hash,tests:v.tests,approval:v.approval})), audit: { count: ((w as any).auditTrail?.events||[]).length, integrity: verifyAuditTrail(w as any) }, traceabilitySummary: deriveTraceability(w).summary, simulation: w.simulation ? { active: w.simulation.active, baseIrVersion: w.simulation.baseIrVersion, validation: w.simulation.validation.status, parity: w.simulation.parity.status } : null }, null, 2)}</pre> :
     <div className="lx-ir-shell">
       <aside className="lx-ir-nav panel">
