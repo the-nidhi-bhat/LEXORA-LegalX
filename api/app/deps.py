@@ -160,16 +160,19 @@ def require(permission: Optional[str] = None) -> Callable:
 
 
 def require_any(*permissions: str) -> Callable:
-    """Dependency factory granting access when the session holds any one of them."""
+    """Grant access when the session holds any one of ``permissions``.
+
+    An empty permission set grants nothing (fail closed) — a dependency
+    declared without permissions must never become an implicit allowance.
+    """
 
     def dependency(request: Request, db: DbSession = Depends(get_db)) -> SessionContext:
         ctx = authenticate(request, db)
         if ctx is None:
             raise ApiError.unauthenticated()
-        if permissions and not any(ctx.has(p) for p in permissions):
-            raise ApiError.forbidden(
-                "This action requires one of: " + ", ".join(permissions)
-            )
+        if not any(ctx.has(p) for p in permissions):
+            listed = ", ".join(permissions) if permissions else "an explicitly granted permission"
+            raise ApiError.forbidden("This action requires one of: " + listed)
         _extend_sliding_expiry(ctx)
         return ctx
 
