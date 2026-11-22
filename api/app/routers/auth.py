@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request, Response
-from sqlalchemy import select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session as DbSession
 
 from api.app.config import get_settings
@@ -59,8 +59,24 @@ def sign_in(
     settings = get_settings()
     ip = request.client.host if request.client else "unknown"
     key = (payload.email, ip)
+    # Namespaced so source-IP traffic can never collide with an email key.
+    ip_key = ("__ip__", ip)
 
-    allowed, retry_after = limiter.check(key)
+    # A second, higher budget on the same limiter bounds credential stuffing
+    # across many email addresses from one source (B-07). Both gates consume
+    # their slot atomically (B-09).
+    ip_allowed, ip_retry_after, ip_stamp = limiter.check_and_record(
+        ip_key, attempts=settings.login_ip_rate_limit_attempts
+    )
+    if not ip_allowed:
+        raise ApiError(
+            429,
+            "RATE_LIMITED",
+            "Too many sign-in attempts from this address. Please try again later.",
+            headers={"Retry-After": str(ip_retry_after)},
+        )
+
+    allowed, retry_after, stamp = limiter.check_and_record(key)
     if not allowed:
         raise ApiError(
             429,
@@ -72,11 +88,9 @@ def sign_in(
     user = db.scalar(select(User).where(User.email == payload.email))
     if user is None or not user.is_active:
         dummy_verify(payload.password)
-        limiter.record_failure(key)
-        raise ApiError.invalid_credentials()
+        raise ApiError.invalid_credentials()  # slot recorded by check_and_record
     if not verify_password(user.password_hash, payload.password):
-        limiter.record_failure(key)
-        raise ApiError.invalid_credentials()
+        raise ApiError.invalid_credentials()  # slot recorded by check_and_record
 
     membership_row = db.execute(
         select(Membership, Organization)
@@ -85,12 +99,28 @@ def sign_in(
         .order_by(Membership.created_at.asc())
     ).first()
     if membership_row is None:
-        limiter.record_failure(key)
+        # Credentials were valid: this is an authorization outcome, not a
+        # credential failure, so release the atomically consumed slots again
+        # without clearing any earlier failures for these keys (B-11/B-07).
+        limiter.unrecord(key, stamp)
+        limiter.unrecord(ip_key, ip_stamp)
         raise ApiError.forbidden("Your account has no workspace membership.")
     membership, organization = membership_row
 
     token = generate_session_token()
     now = utcnow()
+    # Bounded cleanup: a successful sign-in prunes only this user's expired
+    # rows, in the same transaction as the new session. Without this the table
+    # grows without bound from abandoned logins (B-12).
+    db.execute(
+        delete(SessionRow).where(
+            SessionRow.user_id == user.id,
+            or_(
+                SessionRow.expires_at < now,
+                SessionRow.absolute_expires_at < now,
+            ),
+        )
+    )
     row = SessionRow(
         token_hash=hash_token(token),
         user_id=user.id,
@@ -103,6 +133,7 @@ def sign_in(
     db.add(row)
     db.commit()
     limiter.reset(key)
+    limiter.reset(ip_key)
 
     response.set_cookie(
         key=settings.session_cookie_name,

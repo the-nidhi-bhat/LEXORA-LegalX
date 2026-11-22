@@ -22,6 +22,11 @@ from argon2.exceptions import VerificationError, VerifyMismatchError
 # Library defaults (argon2id). Tuned by argon2-cffi, never hand-rolled.
 _hasher = PasswordHasher()
 
+# Build the timing-equalisation hash with the *live* hasher so its parameters
+# can never drift from those of real password hashes. A hard-coded dummy with
+# hash_len=4 (instead of the default 32) was previously used (B-14).
+_dummy_hash = _hasher.hash("legalx-timing-equalisation-placeholder")
+
 
 def hash_password(password: str) -> str:
     """Return an argon2id hash string for ``password``."""
@@ -42,10 +47,7 @@ def verify_password(password_hash: str, password: str) -> bool:
 def dummy_verify(password: str) -> None:
     """Burn comparable CPU for unknown accounts so timing cannot enumerate users."""
     try:
-        _hasher.verify(
-            "$argon2id$v=19$m=65536,t=3,p=4$c2FsdHNhbHRzYWx0c2FsdA$aGFzaA",
-            password,
-        )
+        _hasher.verify(_dummy_hash, password)
     except Exception:  # noqa: BLE001 - expected: the dummy hash never verifies
         pass
 
