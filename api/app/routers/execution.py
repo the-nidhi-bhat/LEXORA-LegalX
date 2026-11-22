@@ -303,13 +303,18 @@ def attempt_execution(
                 replay_row = row
 
     if replay_row is not None:
+        # Contract §1.4: a replay returns the response recorded by the first
+        # successful request. Rebuilding it from the agreement's *current*
+        # state can report a different version if the agreement moved on after
+        # the original execution (e.g. a new draft version was created).
+        stored = json.loads(replay_row.response_body)
         return {
             "status": "idempotent_replay",
-            "agreement_id": agreement.id,
-            "version": version.version if version else None,
-            "approval_policy": agreement.approval_policy,
-            "triggered_by": ctx.user_id,
-            "executed_at": to_wire(replay_row.created_at),
+            "agreement_id": stored.get("agreement_id", agreement.id),
+            "version": stored.get("version"),
+            "approval_policy": stored.get("approval_policy", agreement.approval_policy),
+            "triggered_by": stored.get("triggered_by", ctx.user_id),
+            "executed_at": stored.get("executed_at", to_wire(replay_row.created_at)),
             "idempotent": True,
         }
 
