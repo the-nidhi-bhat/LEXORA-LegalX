@@ -11,7 +11,15 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
   csrfToken?: string
 }
 
-function sleep(ms: number) { return new Promise((r) => setTimeout(r, ms)) }
+function sleep(ms: number, signal?: AbortSignal) {
+  return new Promise<void>((resolve) => {
+    if (signal?.aborted) return resolve()
+    let timer: ReturnType<typeof setTimeout>
+    const onAbort = () => { clearTimeout(timer); resolve() }
+    signal?.addEventListener('abort', onAbort, { once: true })
+    timer = setTimeout(() => { signal?.removeEventListener('abort', onAbort); resolve() }, ms)
+  })
+}
 
 function buildUrl(path: string, query?: RequestOptions['query']): string {
   const base = getApiBaseUrl()
@@ -61,11 +69,17 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const { timeoutMs = API_TIMEOUT_MS, retry = API_RETRY_ATTEMPTS, retryDelayMs = API_RETRY_DELAY_MS, json, query, headers, csrfToken, ...init } = options
   const method = (init.method || 'GET').toUpperCase()
   const canRetry = method === 'GET' || method === 'HEAD'
+  const callerSignal = (init as RequestInit).signal
+  if (callerSignal?.aborted) return toErrorEnvelope('CANCELLED', 'Request cancelled')
   let attempt = 0
   let lastError: ApiErrorEnvelope | null = null
   while (attempt <= retry) {
+    if (callerSignal?.aborted) return toErrorEnvelope('CANCELLED', 'Request cancelled')
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeoutMs)
+    let callerAborted = false
+    const onCallerAbort = () => { callerAborted = true; controller.abort() }
+    if (callerSignal) callerSignal.addEventListener('abort', onCallerAbort, { once: true })
     try {
       const requestHeaders = new Headers(headers)
       if (json !== undefined && !requestHeaders.has('Content-Type')) requestHeaders.set('Content-Type', 'application/json')
@@ -82,20 +96,25 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       const env = await parseEnvelope<T>(res)
       if (!env.ok && canRetry && attempt < retry && isRetryableStatus(res.status)) {
         attempt += 1
-        await sleep(retryDelayMs * attempt)
+        if (callerSignal?.aborted) return toErrorEnvelope('CANCELLED', 'Request cancelled')
+        await sleep(retryDelayMs * attempt, callerSignal ?? undefined)
         continue
       }
       return env
     } catch (err: any) {
       clearTimeout(timer)
+      if (callerAborted) return toErrorEnvelope('CANCELLED', 'Request cancelled')
       const aborted = err?.name === 'AbortError'
       lastError = toErrorEnvelope(aborted ? 'TIMEOUT' : 'NETWORK_ERROR', aborted ? 'Request timed out' : (err?.message || 'Network request failed'), { path, method })
       if (canRetry && attempt < retry) {
         attempt += 1
-        await sleep(retryDelayMs * attempt)
+        if (callerSignal?.aborted) return toErrorEnvelope('CANCELLED', 'Request cancelled')
+        await sleep(retryDelayMs * attempt, callerSignal ?? undefined)
         continue
       }
       return lastError
+    } finally {
+      if (callerSignal) callerSignal.removeEventListener('abort', onCallerAbort)
     }
   }
   return lastError || toErrorEnvelope('UNKNOWN_ERROR', 'Request failed')

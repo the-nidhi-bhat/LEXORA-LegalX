@@ -55,4 +55,25 @@ globalThis.fetch = async () => new Response('{"id":"agreement-1"}', {
   headers: { 'Content-Type': 'Application/Vnd.legalx+Json; charset=utf-8' },
 })
 assert.deepEqual(await api.apiClient.get('/agreements/1'), { ok: true, data: { id: 'agreement-1' } })
+
+// QI-001: a caller-supplied AbortSignal must cancel the in-flight request and
+// prevent any retries. The fetch mock rejects with AbortError when the signal
+// passed to fetch (the internal controller, wired to the caller) aborts.
+{
+  const caller = new AbortController()
+  let fetchCalls = 0
+  globalThis.fetch = (_url, init) => {
+    fetchCalls += 1
+    return new Promise((_resolve, reject) => {
+      init.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+    })
+  }
+  const pending = api.apiRequest('/slow', { signal: caller.signal, timeoutMs: 5000, retry: 3, retryDelayMs: 1 })
+  await new Promise(r => setTimeout(r, 0))
+  caller.abort()
+  const cancelled = await pending
+  assert.equal(cancelled.ok, false, 'aborted request returns an error envelope')
+  assert.equal(cancelled.error.code, 'CANCELLED', 'caller cancellation is CANCELLED, not TIMEOUT/NETWORK_ERROR')
+  assert.equal(fetchCalls, 1, 'cancelled request is not retried')
+}
 console.log('api client tests passed')

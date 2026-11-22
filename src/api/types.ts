@@ -11,6 +11,7 @@ export type ApiErrorCode =
   | 'FORBIDDEN'
   | 'NOT_FOUND'
   | 'TIMEOUT'
+  | 'CANCELLED'
   | 'NETWORK_ERROR'
   | 'UNKNOWN_ERROR'
 
