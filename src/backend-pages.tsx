@@ -4,9 +4,10 @@
    the original components, clearly labeled. */
 import React, { useCallback, useEffect, useState } from 'react'
 import { agreementsApi, versionsApi, activityApi } from './api/client.ts'
+import { safeGet, safeSet } from './components/safeStorage'
 
-const csrf = () => localStorage.getItem('legalx:csrf') || ''
-const activeId = () => localStorage.getItem('legalx:active-agreement') || ''
+const csrf = () => safeGet('legalx:csrf') || ''
+const activeId = () => safeGet('legalx:active-agreement') || ''
 const errMsg = (env: any) => (env && env.error && env.error.message) || 'The request failed. Please try again.'
 const pick = (o: any, ...keys: string[]): any => {
   for (const k of keys) if (o && o[k] !== undefined && o[k] !== null && o[k] !== '') return o[k]
@@ -68,7 +69,7 @@ export function BackendAgreementsList({ onNavigate }: { onNavigate: (p: string) 
         : filtered.map((a: any) => {
           const id = String(pick(a, 'id', 'agreement_id') || '')
           return <button key={id} className="field-row-button agreement-rows" onClick={() => {
-            if (id) localStorage.setItem('legalx:active-agreement', id)
+            if (id) safeSet('legalx:active-agreement', id)
             onNavigate('/app/agreements/website-project')
           }}>
             <div><b>{pick(a, 'title', 'name') || 'Untitled agreement'}</b><div className="muted">{(pick(a, 'agreement_type') || 'agreement') + ' · ' + id.slice(0, 8)}</div></div>
