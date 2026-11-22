@@ -23,6 +23,7 @@ import hashlib
 import json
 import uuid
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 from pydantic import ValidationError
@@ -152,7 +153,10 @@ def build_comparison_inputs(
 
     parties = _party_dicts(agreement.parties)
     milestones = _milestone_dicts(agreement.milestones)
-    total_rupees = agreement.total_amount_minor / 100
+    # Decimal keeps every paise intact; a float division would silently lose
+    # precision for stored amounts larger than 2**53 and create a false parity
+    # mismatch between the derived IR and the execution parameters.
+    total_rupees = Decimal(agreement.total_amount_minor) / Decimal(100)
 
     try:
         derived = derive_ir_from_agreement(
