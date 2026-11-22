@@ -2,6 +2,7 @@ import { ScenarioList, WalkProgress } from './components/Walkthrough'
 import { Badge, Button, Icon, PageHeader, type IconName } from './components/ui'
 import { safeGet, safeKeys, safeRemove, safeSet } from './components/safeStorage'
 import { ContractIR } from './features/contract-ir/ContractIR'
+import { irVersionNumber } from './features/contract-ir/version'
 import { PublicStory } from './PublicStory'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { DEMO_ACCOUNTS, ROLE_DESCRIPTIONS, ROLE_LABELS, ROLE_NAV, type Role, canAccessRoute, hasPermission, maskFinancials } from './rbac'
@@ -706,7 +707,7 @@ function ParityStudio({ tampered, setTampered, score, onNavigate, workflow, role
     if (!liveCanRun) { window.dispatchEvent(new CustomEvent('legalx:notice', { detail: 'Select a backend agreement and complete the executor clarifications before verification.' })); return; }
     const agreementId = activeAgreementId || safeGet('legalx:active-agreement') || ''
     const csrfValue = csrfToken || safeGet('legalx:csrf') || ''
-    const version = parseInt(String(ir?.version || 'v1').replace(/[^0-9]/g, ''), 10) || 1
+    const version = irVersionNumber(ir?.version || 'v1')
     // Exactly two executor clarifications. No commercial field is ever sent;
     // the backend derives every agreed term from its own stored agreement rows.
     const executionParameters = { dispute_behavior: disputeBehavior, governing_law: governingLaw }
