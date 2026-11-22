@@ -213,10 +213,7 @@ export async function healthApi(): Promise<ApiEnvelope<any>> {
   try {
     const res = await fetch('/api/health', { credentials: 'include', signal: controller.signal })
     clearTimeout(timer)
-    const ct = res.headers.get('content-type') || ''
-    const body = ct.includes('application/json') ? await res.json() : await res.text()
-    if (res.ok) return { ok: true, data: body }
-    return toErrorEnvelope('UNKNOWN_ERROR', (body as any)?.message || `Health request failed (${res.status})`, body)
+    return await parseEnvelope<any>(res)
   } catch (err: any) {
     clearTimeout(timer)
     return toErrorEnvelope(err?.name === 'AbortError' ? 'TIMEOUT' : 'NETWORK_ERROR', err?.message || 'Health request failed')

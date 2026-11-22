@@ -103,3 +103,15 @@ assert.equal(stalled.error.code, 'TIMEOUT')
   assert.equal(parseRetryAfter('not-a-date', 1000), null, 'invalid header falls back to backoff')
   assert.equal(parseRetryAfter(null, 1000), null)
 }
+
+// B-02: healthApi must surface malformed JSON as INVALID_RESPONSE, not NETWORK_ERROR.
+{
+  globalThis.fetch = async () => new Response('{', { status: 200, headers: { 'Content-Type': 'application/json' } })
+  const malformedHealth = await api.healthApi()
+  assert.equal(malformedHealth.ok, false)
+  assert.equal(malformedHealth.error.code, 'INVALID_RESPONSE')
+}
+{
+  globalThis.fetch = async () => Response.json({ status: 'ok' })
+  assert.deepEqual(await api.healthApi(), { ok: true, data: { status: 'ok' } }, 'valid health payload still succeeds')
+}
