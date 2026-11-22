@@ -42,4 +42,20 @@ assert.equal(account.workspaceName, 'Acme Digital', 'effectiveAccount uses the v
 store.set(state.PROFILE_KEY, JSON.stringify({ name: 42, email: 'owner@legalx.demo' }))
 assert.equal(state.readStoredProfile(), null, 'invalid name type still returns null')
 
+// QI-004: only real booleans are accepted from persisted settings.
+store.set(state.SETTINGS_KEY, JSON.stringify({
+  blockCriticalMismatches: 'false',
+  askForSourceClauses: null,
+  requireWalletConfirmation: false,
+  emailNotifications: 1,
+}))
+const settings = state.readSettings()
+for (const key of ['blockCriticalMismatches', 'askForSourceClauses', 'requireWalletConfirmation', 'emailNotifications']) {
+  assert.equal(typeof settings[key], 'boolean', `${key} is returned as a boolean`)
+}
+assert.equal(settings.blockCriticalMismatches, true, 'string value falls back to default')
+assert.equal(settings.askForSourceClauses, true, 'null value falls back to default')
+assert.equal(settings.requireWalletConfirmation, false, 'valid false value is preserved')
+assert.equal(settings.emailNotifications, true, 'numeric value falls back to default')
+
 console.log('demo state validation tests passed')

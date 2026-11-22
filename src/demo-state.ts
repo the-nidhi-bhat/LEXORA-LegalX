@@ -93,7 +93,15 @@ export function saveProfile(profile: DemoProfile): DemoProfile {
 }
 
 export function readSettings(): DemoSettings {
-  return { ...DEFAULT_SETTINGS, ...safeRead<Partial<DemoSettings>>(SETTINGS_KEY, {}) }
+  const stored = safeRead<Partial<DemoSettings>>(SETTINGS_KEY, {})
+  const source = stored && typeof stored === 'object' ? stored : {}
+  const bool = (key: keyof DemoSettings) => typeof source[key] === 'boolean' ? source[key] as boolean : DEFAULT_SETTINGS[key]
+  return {
+    blockCriticalMismatches: bool('blockCriticalMismatches'),
+    askForSourceClauses: bool('askForSourceClauses'),
+    requireWalletConfirmation: bool('requireWalletConfirmation'),
+    emailNotifications: bool('emailNotifications'),
+  }
 }
 
 export function saveSettings(settings: DemoSettings): DemoSettings {
