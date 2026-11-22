@@ -89,6 +89,7 @@ export function BackendAgreementDetail({ onNavigate }: { onNavigate: (p: string)
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState('')
   const [saveState, setSaveState] = useState('')
+  const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
     const id = activeId()
@@ -103,12 +104,15 @@ export function BackendAgreementDetail({ onNavigate }: { onNavigate: (p: string)
   useEffect(() => { load() }, [load])
 
   const save = async () => {
+    if (saving) return
     const id = activeId()
     if (!id || !title.trim()) { setSaveState('Enter a title before saving.'); return }
-    setSaveState('Saving…')
-    const env: any = await agreementsApi.update(id, { title: title.trim() }, csrf())
-    if (env.ok) { setAgreement(env.data); setSaveState('Saved to the backend.') }
-    else setSaveState('Save failed: ' + errMsg(env))
+    setSaving(true); setSaveState('Saving…')
+    try {
+      const env: any = await agreementsApi.update(id, { title: title.trim() }, csrf())
+      if (env.ok) { setAgreement(env.data); setSaveState('Saved to the backend.') }
+      else setSaveState('Save failed: ' + errMsg(env))
+    } finally { setSaving(false) }
   }
 
   if (loading) return <div className="lx-agreement-detail persisted-record"><div className="page-header"><div><span className="section-kicker">AGREEMENT DETAIL</span><h1>Loading agreement…</h1></div></div><div className="empty-state">Fetching persisted record from the backend.</div></div>
@@ -151,7 +155,7 @@ export function BackendAgreementDetail({ onNavigate }: { onNavigate: (p: string)
         {editing ? <div style={{ display: 'grid', gap: 10 }}>
           <label>Title<input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn primary" onClick={save}>Save changes</button>
+            <button className="btn primary" disabled={saving} aria-busy={saving} onClick={save}>Save changes</button>
             <button className="btn secondary" onClick={() => { setEditing(false); setTitle(String(agreement?.title || '')); setSaveState('') }}>Cancel</button>
           </div>
           {saveState && <p className={saveState.startsWith('Save failed') || saveState.startsWith('Enter') ? 'inline-error' : 'muted'}>{saveState}</p>}
