@@ -249,7 +249,30 @@ def attempt_execution(
     # Idempotency-Key replay (contract section 1.4): checked *before* any
     # state gate, because a successful first execution legitimately changed
     # the state (draft -> active). A replay returns the prior result.
-    idempotency_key = request.headers.get("Idempotency-Key", "").strip()
+    raw_idempotency_key = request.headers.get("Idempotency-Key", "")
+    idempotency_key = raw_idempotency_key.strip()
+    if raw_idempotency_key and not idempotency_key:
+        raise ApiError.validation(
+            "Invalid Idempotency-Key.",
+            [
+                {
+                    "field": "Idempotency-Key",
+                    "code": "INVALID",
+                    "message": "Key must not be blank.",
+                }
+            ],
+        )
+    if len(idempotency_key) > 128 or any(ord(ch) < 32 or ord(ch) == 127 for ch in idempotency_key):
+        raise ApiError.validation(
+            "Invalid Idempotency-Key.",
+            [
+                {
+                    "field": "Idempotency-Key",
+                    "code": "INVALID",
+                    "message": "Key must be at most 128 printable characters.",
+                }
+            ],
+        )
     replay_row = None
     if idempotency_key:
         from api.app.models.agreements import IdempotencyKey as IdempotencyKeyModel
