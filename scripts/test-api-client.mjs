@@ -76,4 +76,24 @@ assert.deepEqual(await api.apiClient.get('/agreements/1'), { ok: true, data: { i
   assert.equal(cancelled.error.code, 'CANCELLED', 'caller cancellation is CANCELLED, not TIMEOUT/NETWORK_ERROR')
   assert.equal(fetchCalls, 1, 'cancelled request is not retried')
 }
+
+// QI-002: the request timeout must stay active while the response body is
+// being consumed. The mock resolves fetch immediately but only settles
+// json() when the fetch signal aborts, so a premature clearTimeout would hang.
+{
+  globalThis.fetch = (_url, init) => ({
+    ok: true,
+    status: 200,
+    headers: { get: (name) => (name === 'content-type' ? 'application/json' : null) },
+    json: () => new Promise((_resolve, reject) => {
+      init.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+    }),
+  })
+  const started = Date.now()
+  const result = await api.apiRequest('/slow-body', { timeoutMs: 20, retry: 0 })
+  const elapsed = Date.now() - started
+  assert.equal(result.ok, false, 'aborted body read returns an error envelope')
+  assert.equal(result.error.code, 'TIMEOUT', 'timeout is still enforced during the body read')
+  assert.ok(elapsed < 2000, 'request did not hang waiting for the body')
+}
 console.log('api client tests passed')

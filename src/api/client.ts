@@ -47,13 +47,17 @@ async function parseEnvelope<T>(res: Response): Promise<ApiEnvelope<T>> {
   let body: any = null
   const mediaType = contentType.split(';')[0].trim().toLowerCase()
   if (mediaType === 'application/json' || mediaType.endsWith('+json')) {
-    try { body = await res.json() } catch {
+    try { body = await res.json() } catch (err: any) {
+      if (err?.name === 'AbortError') throw err
       if (res.ok && res.status !== 204 && res.status !== 205) {
         return toErrorEnvelope('INVALID_RESPONSE', 'Response contained invalid JSON')
       }
     }
   } else {
-    try { body = await res.text() } catch { body = null }
+    try { body = await res.text() } catch (err: any) {
+      if (err?.name === 'AbortError') throw err
+      body = null
+    }
   }
   if (body && typeof body === 'object' && ('ok' in body)) return body as ApiEnvelope<T>
   // Backend compatibility: FastAPI/custom envelope { error: { code, message, details }, request_id }
@@ -84,16 +88,21 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       const requestHeaders = new Headers(headers)
       if (json !== undefined && !requestHeaders.has('Content-Type')) requestHeaders.set('Content-Type', 'application/json')
       if (csrfToken && !requestHeaders.has('X-CSRF-Token')) requestHeaders.set('X-CSRF-Token', csrfToken)
-      const res = await fetch(buildUrl(path, query), {
-        credentials: init.credentials ?? 'include',
-        ...init,
-        method,
-        headers: requestHeaders,
-        body: json !== undefined ? JSON.stringify(json) : (init as any).body,
-        signal: controller.signal,
-      })
-      clearTimeout(timer)
-      const env = await parseEnvelope<T>(res)
+      let res!: Response
+      let env!: ApiEnvelope<T>
+      try {
+        res = await fetch(buildUrl(path, query), {
+          credentials: init.credentials ?? 'include',
+          ...init,
+          method,
+          headers: requestHeaders,
+          body: json !== undefined ? JSON.stringify(json) : (init as any).body,
+          signal: controller.signal,
+        })
+        env = await parseEnvelope<T>(res)
+      } finally {
+        clearTimeout(timer)
+      }
       if (!env.ok && canRetry && attempt < retry && isRetryableStatus(res.status)) {
         attempt += 1
         if (callerSignal?.aborted) return toErrorEnvelope('CANCELLED', 'Request cancelled')
