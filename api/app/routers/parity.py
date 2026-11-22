@@ -46,7 +46,7 @@ def verify_version(
     # Rate limit per authenticated principal + agreement (reuses the shared
     # in-memory limiter from api.app.ratelimit; same pattern as auth.py). Each
     # verify call appends 3-4 DB rows, so every allowed attempt is recorded.
-    key = (ctx.user_id, agreement_id)
+    key = (f"parity:{ctx.user_id}", agreement_id)
     allowed, retry_after = limiter.check(key)
     if not allowed:
         raise ApiError(

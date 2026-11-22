@@ -426,7 +426,7 @@ def build_trust_passport(
         "recommendation": run.recommendation,
         "is_blocked": run.is_blocked,
         "has_advisory_diffs": run.has_advisory_diffs,
-        "passed": run.passed,
+        "passed": (not stale) and (not run.is_blocked) and approvals_complete,
         "approvals_complete": approvals_complete,
         "approved_ir_hash": run.approved_ir_hash,
         "execution_params_hash": run.execution_params_hash,

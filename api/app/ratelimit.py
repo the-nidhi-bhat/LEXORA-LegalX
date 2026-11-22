@@ -29,6 +29,8 @@ class LoginRateLimiter:
             bucket = self._attempts[key]
             while bucket and now - bucket[0] > window:
                 bucket.popleft()
+            if not bucket:
+                del self._attempts[key]
             if len(bucket) >= settings.login_rate_limit_attempts:
                 retry_after = int(window - (now - bucket[0])) + 1
                 return False, max(retry_after, 1)
