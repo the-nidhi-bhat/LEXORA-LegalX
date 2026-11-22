@@ -29,4 +29,30 @@ const errorEnv = await api.apiRequest('/auth/session', { method: 'POST', json: {
 assert.equal(errorEnv.ok, false, 'backend error envelope maps to an error envelope')
 assert.equal(errorEnv.error.code, 'UNAUTHORIZED', 'backend error code is preserved')
 assert.equal(errorEnv.requestId, 'req-regression-401', 'nested error.request_id is surfaced as requestId')
+for (const headers of [new Headers({ 'X-Trace': '123' }), [['X-Trace', '123']]]) {
+  let received
+  globalThis.fetch = async (_url, init) => {
+    received = new Headers(init.headers)
+    return Response.json({})
+  }
+  await api.apiClient.post('/example', {}, { headers, csrfToken: 'example-token' })
+  assert.equal(received.get('x-trace'), '123')
+  assert.equal(received.get('content-type'), 'application/json')
+  assert.equal(received.get('x-csrf-token'), 'example-token')
+}
+let requestedUrl
+globalThis.fetch = async url => {
+  requestedUrl = url
+  return Response.json({})
+}
+await api.apiClient.get('/agreements?sort=name&page=1#results', { query: { page: 2, q: 'two words' } })
+assert.equal(requestedUrl, '/api/v1/agreements?sort=name&page=2&q=two+words#results')
+globalThis.fetch = async () => new Response('{', { headers: { 'Content-Type': 'application/json' } })
+const malformed = await api.apiClient.get('/agreements')
+assert.equal(malformed.ok, false)
+assert.equal(malformed.error.code, 'INVALID_RESPONSE')
+globalThis.fetch = async () => new Response('{"id":"agreement-1"}', {
+  headers: { 'Content-Type': 'Application/Vnd.legalx+Json; charset=utf-8' },
+})
+assert.deepEqual(await api.apiClient.get('/agreements/1'), { ok: true, data: { id: 'agreement-1' } })
 console.log('api client tests passed')

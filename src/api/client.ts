@@ -18,13 +18,16 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   const url = `${base}${normalizedPath}`
   if (!query) return url
-  const qs = new URLSearchParams()
+  const [resource, fragment] = url.split(/#(.*)/s)
+  const separator = resource.indexOf('?')
+  const pathname = separator < 0 ? resource : resource.slice(0, separator)
+  const qs = new URLSearchParams(separator < 0 ? '' : resource.slice(separator + 1))
   for (const [k, v] of Object.entries(query)) {
     if (v === undefined || v === null || v === '') continue
     qs.set(k, String(v))
   }
   const s = qs.toString()
-  return s ? `${url}?${s}` : url
+  return pathname + (s ? `?${s}` : '') + (fragment === undefined ? '' : `#${fragment}`)
 }
 
 function toErrorEnvelope(code: ApiErrorCode | string, message: string, details?: unknown, requestId?: string): ApiErrorEnvelope {
@@ -34,8 +37,13 @@ function toErrorEnvelope(code: ApiErrorCode | string, message: string, details?:
 async function parseEnvelope<T>(res: Response): Promise<ApiEnvelope<T>> {
   const contentType = res.headers.get('content-type') || ''
   let body: any = null
-  if (contentType.includes('application/json')) {
-    try { body = await res.json() } catch { body = null }
+  const mediaType = contentType.split(';')[0].trim().toLowerCase()
+  if (mediaType === 'application/json' || mediaType.endsWith('+json')) {
+    try { body = await res.json() } catch {
+      if (res.ok && res.status !== 204 && res.status !== 205) {
+        return toErrorEnvelope('INVALID_RESPONSE', 'Response contained invalid JSON')
+      }
+    }
   } else {
     try { body = await res.text() } catch { body = null }
   }
@@ -59,15 +67,14 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeoutMs)
     try {
+      const requestHeaders = new Headers(headers)
+      if (json !== undefined && !requestHeaders.has('Content-Type')) requestHeaders.set('Content-Type', 'application/json')
+      if (csrfToken && !requestHeaders.has('X-CSRF-Token')) requestHeaders.set('X-CSRF-Token', csrfToken)
       const res = await fetch(buildUrl(path, query), {
         credentials: init.credentials ?? 'include',
         ...init,
         method,
-        headers: {
-          ...(json !== undefined ? { 'Content-Type': 'application/json' } : {}),
-          ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
-          ...(headers || {}),
-        },
+        headers: requestHeaders,
         body: json !== undefined ? JSON.stringify(json) : (init as any).body,
         signal: controller.signal,
       })
