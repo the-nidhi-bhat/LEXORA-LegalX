@@ -231,7 +231,9 @@ def _is_approved_party(ctx: SessionContext, agreement: Agreement, db: DbSession)
     ).all()
 
     for party in parties:
-        if party.email == ctx.email:
+        # Email identities are case-insensitive; normalize both sides so a
+        # party stored with different casing is still recognized.
+        if party.email.strip().casefold() == ctx.email.strip().casefold():
             return True
 
     # Check if user is the agreement creator
