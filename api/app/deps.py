@@ -14,8 +14,9 @@ The chain every protected request walks, in order:
                    cross-workspace id can only ever produce ``404 NOT_FOUND``
                    (API_CONTRACTS.md §1.6/§2).
 
-The sliding expiry is extended here on every authenticated request, clamped to
-the absolute cap set at sign-in.
+The sliding expiry is extended only after authentication *and* authorization
+succeed, clamped to the absolute cap set at sign-in. A forbidden request must
+not keep a denied caller's session alive.
 """
 
 from __future__ import annotations
@@ -108,10 +109,8 @@ def authenticate(request: Request, db: DbSession) -> Optional[SessionContext]:
         if not supplied or not tokens_equal(supplied, row.csrf_token):
             raise ApiError.csrf_failed()
 
-    # Sliding window, clamped to the absolute cap from sign-in.
-    extended = min(utcnow_offset(settings.session_ttl_seconds), row.absolute_expires_at)
-    if extended > row.expires_at:
-        row.expires_at = extended
+    # Sliding expiry is applied by require()/require_any() only once the
+    # authorization gate has passed — a 403 must not extend the session (B-13).
 
     organization = db.get(Organization, row.organization_id)
     return SessionContext(
@@ -125,6 +124,15 @@ def authenticate(request: Request, db: DbSession) -> Optional[SessionContext]:
         csrf_token=row.csrf_token,
         session=row,
     )
+
+
+def _extend_sliding_expiry(ctx: SessionContext) -> None:
+    """Advance the sliding window, clamped to the absolute cap from sign-in."""
+    settings = get_settings()
+    row = ctx.session
+    extended = min(utcnow_offset(settings.session_ttl_seconds), row.absolute_expires_at)
+    if extended > row.expires_at:
+        row.expires_at = extended
 
 
 def require(permission: Optional[str] = None) -> Callable:
@@ -145,6 +153,7 @@ def require(permission: Optional[str] = None) -> Callable:
             raise ApiError.forbidden(
                 f"This action requires the '{permission}' permission."
             )
+        _extend_sliding_expiry(ctx)
         return ctx
 
     return dependency
@@ -161,6 +170,7 @@ def require_any(*permissions: str) -> Callable:
             raise ApiError.forbidden(
                 "This action requires one of: " + ", ".join(permissions)
             )
+        _extend_sliding_expiry(ctx)
         return ctx
 
     return dependency
