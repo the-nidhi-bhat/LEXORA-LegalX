@@ -3,7 +3,7 @@
    so authenticated workflows always show real persisted data. Demo mode keeps
    the original components, clearly labeled. */
 import React, { useCallback, useEffect, useState } from 'react'
-import { agreementsApi, versionsApi, activityApi, executionApi } from './api/client.ts'
+import { agreementsApi, versionsApi, activityApi } from './api/client.ts'
 
 const csrf = () => localStorage.getItem('legalx:csrf') || ''
 const activeId = () => localStorage.getItem('legalx:active-agreement') || ''
@@ -267,17 +267,25 @@ export function BackendExecution({ role }: { role?: string }) {
   const [busy, setBusy] = useState(false)
   const id = activeId()
 
+  // READ-ONLY: eligibility is derived from persisted agreement/version records.
+  // POST /execution performs the actual state transition and is never called by
+  // this check; it remains a separate authorized action behind the full gate.
   const check = async () => {
     if (!id) { setState('Select an agreement first.'); return }
     setBusy(true); setState('Checking execution eligibility…')
-    const env: any = await executionApi.run(id, { confirm: false }, csrf())
-    setBusy(false)
-    if (env.ok) {
-      const d: any = env.data
-      setState('Eligible: ' + String(pick(d, 'status', 'eligibility', 'message') || 'ready'))
-    } else if (env.error && (env.error.code === 'FORBIDDEN' || /blocked/i.test(env.error.message || ''))) {
-      setState('Blocked: ' + env.error.message)
-    } else setState('Check failed: ' + errMsg(env))
+    try {
+      const env: any = await agreementsApi.get(id)
+      if (!env.ok) { setState('Check failed: ' + errMsg(env)); return }
+      const record: any = env.data
+      const status = String(pick(record, 'status', 'state') || 'unknown')
+      const policy = String(pick(record, 'approval_policy') || 'unknown')
+      if (status !== 'draft') { setState(`Not eligible: agreement status is '${status}' (execution requires draft).`); return }
+      const versionsEnv: any = await versionsApi.list(id)
+      const d: any = versionsEnv.data
+      const versions: any[] = Array.isArray(d) ? d : Array.isArray(d?.items) ? d.items : Array.isArray(d?.versions) ? d.versions : []
+      if (!versions.length) { setState(`Not eligible: no versions recorded for policy '${policy}'.`); return }
+      setState(`Eligibility signals: draft status, ${versions.length} version(s), policy '${policy}'. Read-only check — the authorized execution gate decides.`)
+    } finally { setBusy(false) }
   }
 
   return <div>
