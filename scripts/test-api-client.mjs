@@ -115,3 +115,22 @@ assert.equal(stalled.error.code, 'TIMEOUT')
   globalThis.fetch = async () => Response.json({ status: 'ok' })
   assert.deepEqual(await api.healthApi(), { ok: true, data: { status: 'ok' } }, 'valid health payload still succeeds')
 }
+
+// B-03: a 2xx payload with a non-envelope `error` field is data, not a failure.
+{
+  const payload = { id: 'agreement-1', title: 'Valid document', error: 'informational warning' }
+  globalThis.fetch = async () => Response.json(payload)
+  assert.deepEqual(await api.apiClient.get('/agreements/1'), { ok: true, data: payload }, 'string error field is data')
+}
+{
+  const payload = { id: 'agreement-1', error: { reason: 'not-an-error-envelope' } }
+  globalThis.fetch = async () => Response.json(payload)
+  assert.deepEqual(await api.apiClient.get('/agreements/1'), { ok: true, data: payload }, 'object without code/message is data')
+}
+{
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: { code: 'VALIDATION_FAILED', message: 'bad input' }, request_id: 'req-1' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
+  const realError = await api.apiClient.post('/agreements', {})
+  assert.equal(realError.ok, false)
+  assert.equal(realError.error.code, 'VALIDATION_FAILED', 'real error envelope is still coerced')
+  assert.equal(realError.error.message, 'bad input')
+}

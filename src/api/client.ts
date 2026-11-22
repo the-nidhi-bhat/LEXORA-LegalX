@@ -62,6 +62,13 @@ function toErrorEnvelope(code: ApiErrorCode | string, message: string, details?:
   return { ok: false, error: { code, message, details }, requestId }
 }
 
+/** Only { error: { code | message, ... } } is a backend error envelope; other `error` fields are data. */
+function isBackendErrorEnvelope(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false
+  const error = value as Record<string, unknown>
+  return 'code' in error || 'message' in error
+}
+
 async function parseEnvelope<T>(res: Response): Promise<ApiEnvelope<T>> {
   const contentType = res.headers.get('content-type') || ''
   let body: any = null
@@ -77,7 +84,7 @@ async function parseEnvelope<T>(res: Response): Promise<ApiEnvelope<T>> {
   }
   if (body && typeof body === 'object' && ('ok' in body)) return body as ApiEnvelope<T>
   // Backend compatibility: FastAPI/custom envelope { error: { code, message, details }, request_id }
-  if (body && typeof body === 'object' && body.error && !('ok' in body)) {
+  if (body && typeof body === 'object' && !('ok' in body) && isBackendErrorEnvelope(body.error)) {
     const err = body.error || {}
     return toErrorEnvelope(err.code || (res.status === 401 ? 'UNAUTHORIZED' : res.status === 403 ? 'FORBIDDEN' : res.status === 404 ? 'NOT_FOUND' : 'UNKNOWN_ERROR'), err.message || `Request failed (${res.status})`, err.details ?? body, err.request_id || body.request_id || body.requestId)
   }
