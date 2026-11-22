@@ -15,7 +15,7 @@ assert.deepEqual(parseIrVersion('v1.2'), { major: 1, minor: 2 }, 'components are
 assert.equal(nextIrMajorVersion('v1.2'), 'v2.0', 'v1.2 bumps to v2.0, not v13.0')
 assert.equal(nextIrMajorVersion('v1.0'), 'v2.0', 'v1.0 bumps to v2.0, not v11.0')
 
-assert.ok(app.includes("import { irVersionNumber } from './features/contract-ir/version'"), 'App imports the version helper')
+assert.match(app, /import \{[^}]*irVersionNumber[^}]*\} from '\.\/features\/contract-ir\/version'/, 'App imports the version helper')
 assert.ok(app.includes('const version = irVersionNumber(ir?.version || \'v1\')'), 'backend verification uses the parsed version')
 assert.ok(!app.includes("parseInt(String(ir?.version || 'v1').replace(/[^0-9]/g, ''), 10)"), 'digit-stripping derivation is gone')
 

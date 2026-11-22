@@ -2,7 +2,7 @@ import { ScenarioList, WalkProgress } from './components/Walkthrough'
 import { Badge, Button, Icon, PageHeader, type IconName } from './components/ui'
 import { safeGet, safeKeys, safeRemove, safeSet } from './components/safeStorage'
 import { ContractIR } from './features/contract-ir/ContractIR'
-import { irVersionNumber } from './features/contract-ir/version'
+import { irVersionNumber, nextIrMajorVersion } from './features/contract-ir/version'
 import { PublicStory } from './PublicStory'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { DEMO_ACCOUNTS, ROLE_DESCRIPTIONS, ROLE_LABELS, ROLE_NAV, type Role, canAccessRoute, hasPermission, maskFinancials } from './rbac'
@@ -341,7 +341,7 @@ function AppShell({ path, role, onNavigate, onRoleChange }: { path: string; role
       const hasCore = lowered.includes('50000') || lowered.includes('50,000') || (lowered.includes('20000') && lowered.includes('30000'));
       const prev = readWorkflow();
       const ir: NonNullable<WorkflowState['ir']> = {
-        version: prev.ir ? `v${(parseInt((prev.ir.version || 'v1').replace(/[^0-9]/g, ''), 10) || 1) + 1}.0` : 'v1.0',
+        version: prev.ir ? nextIrMajorVersion(prev.ir.version) : 'v1.0',
         agreement_type: 'freelance_milestone',
         currency: 'INR',
         total_amount: 50000,
@@ -964,7 +964,7 @@ function Team({ role = 'owner', onNavigate, workflow }: { role?: Role; onNavigat
     if (!revisionNote.trim()) { window.dispatchEvent(new CustomEvent('legalx:notice', { detail: 'Describe the revision before saving.' })); return }
     const current = readWorkflow();
     if (!current.ir) { window.dispatchEvent(new CustomEvent('legalx:notice', { detail: 'Generate Contract IR before recording a revision.' })); return }
-    const bumped = 'v'+((parseInt((current.ir.version||'v1').replace(/[^0-9]/g,''),10)||1)+1)+'.0';
+    const bumped = nextIrMajorVersion(current.ir.version || 'v1');
     const updatedIr = { ...current.ir, version: bumped };
     const revision = { id: 'rev-'+Date.now(), at: new Date().toLocaleString(), summary: revisionNote.trim(), irVersion: bumped };
     const issues: string[] = [];

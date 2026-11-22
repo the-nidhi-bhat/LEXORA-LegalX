@@ -5,6 +5,7 @@ import { generateSolidity, runGenerationTests } from '../../solidity'
 import { buildClausesFromIr, deriveTraceability, diffIrs, affectedFromDiff } from '../../traceability'
 import { computeDrift, detectAndApplyDrift, ensureIntegrityFields, getAuditTrail, hashIr, logEvent, recordVersion, verifyAuditTrail } from '../../workflow-integrity'
 import { Badge, Button, Icon, PageHeader } from '../../components/ui'
+import { nextIrMajorVersion } from './version'
 
 function TraceabilityExplorer({ workflow }: { workflow: WorkflowState }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
@@ -161,7 +162,7 @@ function WhatIfSimulator({ workflow, role }: { workflow: WorkflowState; role: Ro
     if (s0.validation.status !== 'valid') { window.dispatchEvent(new CustomEvent('legalx:notice', { detail: 'Simulation must be valid before creating a revision.' })); return; }
     // explicit user choice handled by button label/confirm
     if (!window.confirm('Create a NEW revision from this simulation? Original approved IR/Solidity remain preserved in history; the new revision will reset approval and generated Solidity/tests.')) return;
-    const bumped = 'v'+((parseInt((cur.ir?.version||'v1').replace(/[^0-9]/g,''),10)||1)+1)+'.0';
+    const bumped = nextIrMajorVersion(cur.ir?.version || 'v1');
     const updatedIr = { ...JSON.parse(JSON.stringify(s0.draftIr)), version: bumped };
     const issues: string[] = []; if(updatedIr.total_amount<=0) issues.push('Total amount invalid'); if((updatedIr.milestones||[]).reduce((a:number,m:any)=>a+Number(m.amount||0),0)!==Number(updatedIr.total_amount)) issues.push('Milestone sum mismatch');
     const validation = { status: issues.length?'invalid':'valid', issues, checkedAt: new Date().toLocaleString() } as any;
