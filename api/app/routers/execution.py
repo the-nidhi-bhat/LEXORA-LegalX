@@ -227,7 +227,7 @@ def attempt_execution(
     """
 
     # Rate limiting per session + agreement
-    key = (ctx.user_id, agreement_id)
+    key = (f"execution:{ctx.user_id}", agreement_id)
     allowed, retry_after = limiter.check(key)
     if not allowed:
         raise ApiError(
