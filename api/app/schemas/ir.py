@@ -198,6 +198,14 @@ class ContractIR(BaseModel):
         return self
 
     @model_validator(mode="after")
+    def _validate_unique_milestone_seqs(self) -> "ContractIR":
+        """Duplicate sequence numbers make canonical comparison ambiguous."""
+        seqs = [m.seq for m in self.milestones]
+        if len(set(seqs)) != len(seqs):
+            raise ValueError("Milestone seq values must be unique")
+        return self
+
+    @model_validator(mode="after")
     def _validate_parties_required_roles(self) -> "ContractIR":
         """Ensure at least client and provider are present."""
         parties: list[Party] = self.parties
