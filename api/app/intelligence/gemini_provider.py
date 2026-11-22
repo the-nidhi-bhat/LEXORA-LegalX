@@ -24,6 +24,7 @@ Failure handling:
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import time
 from typing import Any, Callable, Optional
@@ -51,6 +52,14 @@ MODEL_ENV_VAR = "LEGALX_GEMINI_MODEL"
 
 _SAFETY_FINISH_REASONS = {"SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII"}
 
+#: Truthful provider statuses. ``real`` means an actual Gemini SDK client is
+#: configured, ``simulated`` means an injected non-SDK (test/demo) client, and
+#: ``unavailable`` means no usable client can be resolved. A provider must never
+#: report ``real`` just because an API key happens to be present.
+STATUS_REAL = "real"
+STATUS_SIMULATED = "simulated"
+STATUS_UNAVAILABLE = "unavailable"
+
 
 class GeminiExtractionProvider:
     """Extraction provider backed by the Gemini API."""
@@ -68,15 +77,57 @@ class GeminiExtractionProvider:
         backoff_seconds: float = 1.0,
         sleep: Optional[Callable[[float], None]] = None,
         types_module: Any = None,
+        sdk_available: Optional[bool] = None,
     ):
         self._api_key = api_key or os.environ.get(API_KEY_ENV_VAR)
         self._client = client
         self._types = types_module
+        # Explicit override for the status probe, so callers/tests can state
+        # whether the optional SDK is installed without importing it.
+        self._sdk_available = sdk_available
         self.model = model or os.environ.get(MODEL_ENV_VAR) or DEFAULT_MODEL
         self.timeout_seconds = timeout_seconds
         self.max_attempts = max(1, int(max_attempts))
         self.backoff_seconds = backoff_seconds
         self._sleep = sleep or time.sleep
+
+    # -- truthful status --------------------------------------------------
+
+    @property
+    def status(self) -> str:
+        """What this provider can actually do, never an aspiration.
+
+        - ``real``: an official Gemini SDK client is in use, or a key plus an
+          installed SDK means real calls are possible.
+        - ``simulated``: an injected non-SDK client (tests/demos) is in use.
+        - ``unavailable``: no usable client or credentials are available.
+        """
+        if self._client is not None:
+            return STATUS_REAL if _is_official_client(self._client) else STATUS_SIMULATED
+        if is_configured(self._api_key) and self._sdk_is_installed():
+            return STATUS_REAL
+        return STATUS_UNAVAILABLE
+
+    @property
+    def is_available(self) -> bool:
+        """True when the provider has a usable client (real or simulated)."""
+        return self.status in (STATUS_REAL, STATUS_SIMULATED)
+
+    @property
+    def is_real(self) -> bool:
+        """True only when backed by an actual Gemini SDK client/key."""
+        return self.status == STATUS_REAL
+
+    def _sdk_is_installed(self) -> bool:
+        # Used only by the status probe; the actual client resolution imports
+        # the SDK and raises a typed error if it is missing. An explicit
+        # override keeps status reporting deterministic without the SDK.
+        if self._sdk_available is not None:
+            return self._sdk_available
+        try:
+            return importlib.util.find_spec("google.genai") is not None
+        except (ImportError, ValueError):  # pragma: no cover - defensive
+            return False
 
     # -- client / SDK -----------------------------------------------------
 
@@ -266,10 +317,19 @@ def is_configured(api_key: Optional[str] = None) -> bool:
     return bool(api_key or os.environ.get(API_KEY_ENV_VAR))
 
 
+def _is_official_client(client: Any) -> bool:
+    """True when ``client`` comes from the official ``google-genai`` SDK."""
+    module = type(client).__module__ or ""
+    return module == "google.genai.client" or module.startswith("google.genai.")
+
+
 __all__ = [
     "API_KEY_ENV_VAR",
     "DEFAULT_MODEL",
-    "GeminiExtractionProvider",
     "MODEL_ENV_VAR",
+    "STATUS_REAL",
+    "STATUS_SIMULATED",
+    "STATUS_UNAVAILABLE",
+    "GeminiExtractionProvider",
     "is_configured",
 ]
