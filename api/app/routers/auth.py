@@ -60,7 +60,9 @@ def sign_in(
     ip = request.client.host if request.client else "unknown"
     key = (payload.email, ip)
 
-    allowed, retry_after = limiter.check(key)
+    # Consume the slot and check the limit in one atomic step so concurrent
+    # attempts cannot all observe a not-yet-full bucket (B-09).
+    allowed, retry_after, stamp = limiter.check_and_record(key)
     if not allowed:
         raise ApiError(
             429,
@@ -72,11 +74,9 @@ def sign_in(
     user = db.scalar(select(User).where(User.email == payload.email))
     if user is None or not user.is_active:
         dummy_verify(payload.password)
-        limiter.record_failure(key)
-        raise ApiError.invalid_credentials()
+        raise ApiError.invalid_credentials()  # slot recorded by check_and_record
     if not verify_password(user.password_hash, payload.password):
-        limiter.record_failure(key)
-        raise ApiError.invalid_credentials()
+        raise ApiError.invalid_credentials()  # slot recorded by check_and_record
 
     membership_row = db.execute(
         select(Membership, Organization)
@@ -86,7 +86,9 @@ def sign_in(
     ).first()
     if membership_row is None:
         # Credentials were valid: this is an authorization outcome, not a
-        # credential failure, so it must not consume the sign-in failure budget.
+        # credential failure, so release the atomically consumed slot again
+        # without clearing any earlier failures for this key (B-11).
+        limiter.unrecord(key, stamp)
         raise ApiError.forbidden("Your account has no workspace membership.")
     membership, organization = membership_row
 
