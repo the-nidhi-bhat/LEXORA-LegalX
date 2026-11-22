@@ -134,3 +134,9 @@ assert.equal(stalled.error.code, 'TIMEOUT')
   assert.equal(realError.error.code, 'VALIDATION_FAILED', 'real error envelope is still coerced')
   assert.equal(realError.error.message, 'bad input')
 }
+
+// B-04: 204/205 responses must normalize to data:null, not an empty string.
+for (const status of [204, 205]) {
+  globalThis.fetch = async () => new Response(null, { status })
+  assert.deepEqual(await api.apiClient.get('/empty'), { ok: true, data: null }, `status ${status} yields data:null`)
+}

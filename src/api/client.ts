@@ -70,6 +70,8 @@ function isBackendErrorEnvelope(value: unknown): boolean {
 }
 
 async function parseEnvelope<T>(res: Response): Promise<ApiEnvelope<T>> {
+  // 204/205 must not have a body; normalize both to a single documented empty value.
+  if (res.status === 204 || res.status === 205) return { ok: true, data: null as T }
   const contentType = res.headers.get('content-type') || ''
   let body: any = null
   const mediaType = contentType.split(';')[0].trim().toLowerCase()
