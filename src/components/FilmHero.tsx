@@ -32,6 +32,17 @@ export function FilmHero(){
 }
 export function ProductFilm(){
   const player=useRef<HTMLVideoElement>(null)
-  return <section id="product-film" className="folio-section product-film"><h2>The agreement under review.</h2>{__LEGALX_MEDIA__.film && <><video ref={player} controls playsInline preload="none" poster={poster} aria-label="LegalX product film"><source src="/film/legalx.mp4" type="video/mp4"/><track kind="captions" src="/film/legalx.en.vtt" srcLang="en" label="English" default/></video><button onClick={()=>{if(player.current){player.current.currentTime=0;void player.current.play()}}}>Replay film</button></>}
+  const [playbackError, setPlaybackError] = useState('')
+  async function replay() {
+    if (!player.current) return
+    setPlaybackError('')
+    try {
+      player.current.currentTime = 0
+      await player.current.play()
+    } catch {
+      setPlaybackError('The film could not restart. Try the video player controls.')
+    }
+  }
+  return <section id="product-film" className="folio-section product-film"><h2>The agreement under review.</h2>{__LEGALX_MEDIA__.film && <><video ref={player} controls playsInline onPlaying={() => setPlaybackError('')} preload="none" poster={poster} aria-label="LegalX product film"><source src="/film/legalx.mp4" type="video/mp4"/><track kind="captions" src="/film/legalx.en.vtt" srcLang="en" label="English" default/></video><button onClick={replay}>Replay film</button><p role="status">{playbackError}</p></>}
   <details><summary>How the legal terms map to this example</summary><p>The client offers payment for the developer’s work. Acceptance and consideration are part of formation. Identify who owes each obligation and which approval releases each ₹10,000 milestone. Capacity, free consent and a lawful object also matter under Indian law. <a href="https://www.indiacode.nic.in/bitstream/123456789/2187/2/A187209.pdf">Indian Contract Act, sections 2 and 10</a></p><p>Amounts and dates can be compared mechanically. Whether performance amounts to breach, what loss resulted, and which remedy follows require factual and legal review. Record governing law and the agreed dispute process for the reviewer. <a href="https://www.indiacode.nic.in/bitstream/123456789/2187/2/A187209.pdf">Indian Contract Act, sections 73–74</a></p><p>Electronic formation alone does not make an agreement unenforceable. A passing parity check confirms agreement between compared fields. Enforceability remains a separate legal question. <a href="https://www.indiacode.nic.in/bitstream/123456789/15386/1/it_amendment_act2008.pdf">Information Technology Act, section 10A</a></p></details></section>
 }
