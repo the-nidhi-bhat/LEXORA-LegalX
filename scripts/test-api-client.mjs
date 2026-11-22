@@ -140,3 +140,20 @@ for (const status of [204, 205]) {
   globalThis.fetch = async () => new Response(null, { status })
   assert.deepEqual(await api.apiClient.get('/empty'), { ok: true, data: null }, `status ${status} yields data:null`)
 }
+
+// B-05: a 2xx HTML (non-JSON) response must not be accepted as success.
+{
+  globalThis.fetch = async () => new Response('<html><body>Please log in</body></html>', {
+    status: 200,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  })
+  const html = await api.apiClient.get('/dashboard')
+  assert.equal(html.ok, false)
+  assert.equal(html.error.code, 'INVALID_RESPONSE')
+}
+{
+  globalThis.fetch = async () => new Response('plain text', { status: 200, headers: { 'Content-Type': 'text/plain' } })
+  const text = await api.apiClient.get('/plain')
+  assert.equal(text.ok, false)
+  assert.equal(text.error.code, 'INVALID_RESPONSE')
+}

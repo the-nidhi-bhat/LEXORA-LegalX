@@ -83,6 +83,7 @@ async function parseEnvelope<T>(res: Response): Promise<ApiEnvelope<T>> {
     }
   } else {
     try { body = await res.text() } catch { body = null }
+    if (res.ok) return toErrorEnvelope('INVALID_RESPONSE', mediaType ? `Unexpected content-type: ${mediaType}` : 'Successful response has no content-type')
   }
   if (body && typeof body === 'object' && ('ok' in body)) return body as ApiEnvelope<T>
   // Backend compatibility: FastAPI/custom envelope { error: { code, message, details }, request_id }
