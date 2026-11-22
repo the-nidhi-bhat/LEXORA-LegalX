@@ -77,3 +77,29 @@ globalThis.fetch = async (_url, { signal }) => new Response(new ReadableStream({
 }), { headers: { 'Content-Type': 'application/json' } })
 const stalled = await api.apiClient.get('/slow-body', { timeoutMs: 10, retry: 0 })
 assert.equal(stalled.error.code, 'TIMEOUT')
+
+// B-01: a 429 Retry-After header must override the fixed exponential backoff.
+{
+  const started = Date.now()
+  let attempts = 0
+  globalThis.fetch = async () => {
+    attempts++
+    return new Response(JSON.stringify({ error: { code: 'RATE_LIMITED', message: 'slow down' } }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', 'Retry-After': '0' },
+    })
+  }
+  const limited = await api.apiRequest('/rate-limited', { method: 'GET', retry: 2, retryDelayMs: 5000 })
+  assert.equal(limited.ok, false)
+  assert.equal(attempts, 3, '429 retries up to the configured max attempts')
+  assert.ok(Date.now() - started < 2000, 'Retry-After: 0 honored instead of the fixed 5s backoff')
+}
+{
+  const { parseRetryAfter } = api
+  assert.equal(parseRetryAfter('0', 1000), 0)
+  assert.equal(parseRetryAfter('2', 1000), 2000, 'delta-seconds form parsed')
+  assert.equal(parseRetryAfter('120', 1000), 30000, 'delay is capped')
+  assert.equal(parseRetryAfter(new Date(6000).toUTCString(), 1000), 5000, 'HTTP-date form parsed')
+  assert.equal(parseRetryAfter('not-a-date', 1000), null, 'invalid header falls back to backoff')
+  assert.equal(parseRetryAfter(null, 1000), null)
+}

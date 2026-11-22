@@ -24,6 +24,23 @@ function sleep(ms: number, signal?: AbortSignal | null) {
   })
 }
 
+/** Upper bound for a server-supplied Retry-After delay, so a bad header cannot stall the client. */
+const MAX_RETRY_AFTER_MS = 30_000
+
+/** Parse Retry-After (delta-seconds or HTTP-date) into milliseconds; null means absent/invalid. */
+export function parseRetryAfter(header: string | null, now = Date.now(), maxMs = MAX_RETRY_AFTER_MS): number | null {
+  if (!header) return null
+  const value = header.trim()
+  if (!value) return null
+  if (/^\d+$/.test(value)) {
+    const seconds = Number(value)
+    return Number.isFinite(seconds) ? Math.min(seconds * 1000, maxMs) : null
+  }
+  const parsed = Date.parse(value)
+  if (Number.isNaN(parsed)) return null
+  return Math.min(Math.max(parsed - now, 0), maxMs)
+}
+
 function buildUrl(path: string, query?: RequestOptions['query']): string {
   const base = getApiBaseUrl()
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
@@ -98,7 +115,8 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       if (init.signal?.aborted) return toErrorEnvelope('CANCELLED', 'Request cancelled')
       if (!env.ok && canRetry && attempt < retry && isRetryableStatus(res.status)) {
         attempt += 1
-        await sleep(retryDelayMs * attempt, init.signal)
+        const retryAfter = parseRetryAfter(res.headers.get('retry-after'))
+        await sleep(retryAfter ?? retryDelayMs * attempt, init.signal)
         continue
       }
       return env
