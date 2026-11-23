@@ -1,4 +1,4 @@
-# L E G A L X
+# LEGALX
 
 **LEGALX** — a LEXORA prototype for hackathon presentation.
 
